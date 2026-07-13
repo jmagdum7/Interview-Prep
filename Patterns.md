@@ -86,9 +86,9 @@
 ```python
 seen = set()
 for x in arr:
-    if x in seen:      # O(1) — already saw this, act on it
+    if x in seen:      # O(1) lookup — already saw this, act on it
         return True
-    seen.add(x)        # first time — store for future checks
+    seen.add(x)        # first time seeing it — store for future checks
 return False
 ```
 
@@ -99,6 +99,8 @@ x=2 → not in {1} → seen={1,2}
 x=3 → not in {1,2} → seen={1,2,3}
 x=1 → IN {1,2,3} → return True ✓
 ```
+
+**Complexity:** O(n) time — one pass. O(n) space — storing up to n elements in the set.
 
 ---
 
@@ -117,17 +119,19 @@ count "nagaram" → {'n':1,'a':3,'g':1,'r':1,'m':1}
 equal → True ✓
 ```
 
+**Complexity:** O(n) time — one pass. O(k) space where k = number of unique elements.
+
 ---
 
 ### Template 3 — Complement Map
 
 ```python
-seen = {}                              # value → index
+seen = {}                              # stores value → index as we scan
 for i, x in enumerate(arr):
-    complement = target - x            # what we NEED
-    if complement in seen:             # already passed it?
-        return [seen[complement], i]
-    seen[x] = i                        # store for future checks
+    complement = target - x            # what we NEED to complete the pair
+    if complement in seen:             # did we already pass it?
+        return [seen[complement], i]   # yes — return both indices
+    seen[x] = i                        # no — store x for future checks
 ```
 
 **Trace — `[2,7,11,15]`, target=9:**
@@ -136,16 +140,18 @@ x=2 → need 7 → not seen → store {2:0}
 x=7 → need 2 → 2 IS seen → return [0,1] ✓
 ```
 
+**Complexity:** O(n) time — one pass. O(n) space — storing up to n elements in the map.
+
 ---
 
 ### Template 4 — Prefix Sums
 
 ```python
-prefix = [0] * (len(arr) + 1)         # extra slot so prefix[0]=0 (empty sum)
+prefix = [0] * (len(arr) + 1)         # extra slot so prefix[0]=0 (empty sum base case)
 for i in range(len(arr)):
-    prefix[i+1] = prefix[i] + arr[i]  # running total up to index i
+    prefix[i+1] = prefix[i] + arr[i]  # each slot = running total up to index i
 
-range_sum = prefix[j+1] - prefix[i]   # sum from i to j in O(1)
+range_sum = prefix[j+1] - prefix[i]   # sum from i to j in O(1) — subtract what came before
 ```
 
 **Trace — `[1,2,3,4]`, sum index 1 to 2:**
@@ -154,6 +160,8 @@ prefix = [0, 1, 3, 6, 10]
 prefix[3] - prefix[1] = 6 - 1 = 5  (2+3=5) ✓
 ```
 
+**Complexity:** O(n) time to build. O(1) per range query. O(n) space for the prefix array.
+
 ---
 
 ### Template 5 — Bucket Sort (Top K Frequent)
@@ -161,22 +169,20 @@ prefix[3] - prefix[1] = 6 - 1 = 5  (2+3=5) ✓
 ```python
 freq = {}
 for n in nums:
-    freq[n] = freq.get(n, 0) + 1
+    freq[n] = freq.get(n, 0) + 1          # count frequency of each element
 
-bucket = [[] for _ in range(len(nums) + 1)]  # index = frequency
+bucket = [[] for _ in range(len(nums) + 1)]  # index = frequency, max possible = len(nums)
 for num, count in freq.items():
-    bucket[count].append(num)
+    bucket[count].append(num)              # place element at its frequency index
 
 result = []
-for i in range(len(bucket) - 1, 0, -1):      # right to left = most frequent first
+for i in range(len(bucket) - 1, 0, -1):  # scan right to left = most frequent first
     result.extend(bucket[i])
     if len(result) >= k:
         return result[:k]
 ```
 
-**Why O(n):** frequency used as direct index — no sorting, no comparisons.
-
-**Complexity:** O(n) time, O(n) space
+**Complexity:** O(n) time — no sorting, frequency used as direct index. O(n) space for freq map and bucket.
 
 ---
 ---
@@ -227,15 +233,19 @@ for i in range(len(bucket) - 1, 0, -1):      # right to left = most frequent fir
 ### Template 1 — Two Pointers Inward (Sorted Array)
 
 ```python
-left, right = 0, len(arr) - 1
+left, right = 0, len(arr) - 1         # start at opposite ends
+
 while left < right:
     current_sum = arr[left] + arr[right]
+
     if current_sum == target:
-        return [left, right]       # found it
+        return [left, right]           # found the pair
+
     elif current_sum < target:
-        left += 1                  # sum too small — move left up
+        left += 1                      # sum too small — move left up to increase
+
     else:
-        right -= 1                 # sum too big — move right down
+        right -= 1                     # sum too big — move right down to decrease
 ```
 
 **Trace — `[1,3,6,8,11]`, target=9:**
@@ -244,17 +254,21 @@ left=0(1), right=4(11) → sum=12 > 9 → right--
 left=0(1), right=3(8)  → sum=9 == 9 → return [0,3] ✓
 ```
 
+**Complexity:** O(n) time — each pointer moves at most n steps. O(1) space — no extra storage.
+
 ---
 
 ### Template 2 — In-place Write
 
 ```python
-write = 0                          # position to write next kept element
+write = 0                              # tracks where to write the next kept element
+
 for read in range(len(arr)):
-    if arr[read] != val:           # keep this element
-        arr[write] = arr[read]
-        write += 1
-return write                       # new length
+    if arr[read] != val:               # this element should be kept
+        arr[write] = arr[read]         # write it to the next available position
+        write += 1                     # advance write pointer
+
+return write                           # write = new length of the array
 ```
 
 **Trace — `[1,2,2,3]`, remove 2:**
@@ -266,33 +280,54 @@ read=3(3): keep → arr[1]=3, write=2
 result: [1,3,...], length=2 ✓
 ```
 
+**Complexity:** O(n) time — one pass. O(1) space — modified in place.
+
 ---
 
 ### Template 3 — Three Sum
 
 ```python
-arr.sort()
+arr.sort()         # sort first — two pointers only work on sorted input
 result = []
+
 for i in range(len(arr) - 2):
-    if i > 0 and arr[i] == arr[i-1]:  # skip duplicates
+
+    # skip duplicate values for the fixed element
+    # avoids adding the same triplet to result multiple times
+    is_duplicate = i > 0 and arr[i] == arr[i - 1]
+    if is_duplicate:
         continue
-    left, right = i + 1, len(arr) - 1
+
+    left = i + 1               # left pointer starts just after fixed element
+    right = len(arr) - 1       # right pointer starts at the end
+
     while left < right:
         total = arr[i] + arr[left] + arr[right]
+
         if total == 0:
             result.append([arr[i], arr[left], arr[right]])
-            while left < right and arr[left] == arr[left+1]: left += 1
-            while left < right and arr[right] == arr[right-1]: right -= 1
-            left += 1
+
+            # move past duplicates on left side before continuing
+            while left < right and arr[left] == arr[left + 1]:
+                left += 1
+
+            # move past duplicates on right side before continuing
+            while left < right and arr[right] == arr[right - 1]:
+                right -= 1
+
+            left += 1          # move both inward to look for next unique pair
             right -= 1
+
         elif total < 0:
-            left += 1
+            left += 1          # sum too small — increase by moving left up
+
         else:
-            right -= 1
+            right -= 1         # sum too big — decrease by moving right down
+
 return result
 ```
 
-**Complexity:** O(n²) time, O(1) space (excluding output)
+**Complexity:** O(n²) time — outer loop O(n), inner two pointers O(n). O(1) space excluding output.
 
 ---
 ---
@@ -343,12 +378,12 @@ return result
 ### Template 1 — Fixed Size Window
 
 ```python
-window_sum = sum(arr[:k])          # sum of first window
+window_sum = sum(arr[:k])          # compute sum of first window
 max_sum = window_sum
 
 for i in range(k, len(arr)):
-    window_sum += arr[i]           # add new right element
-    window_sum -= arr[i - k]      # remove old left element
+    window_sum += arr[i]           # add the new right element
+    window_sum -= arr[i - k]      # remove the old left element that fell out
     max_sum = max(max_sum, window_sum)
 
 return max_sum
@@ -363,6 +398,8 @@ i=5: add 2, remove 5 → sum=6
 max = 9 ✓
 ```
 
+**Complexity:** O(n) time — one pass after initial window. O(1) space — just tracking the running sum.
+
 ---
 
 ### Template 2 — Variable Window
@@ -373,10 +410,10 @@ seen = set()
 max_len = 0
 
 for right in range(len(s)):
-    while s[right] in seen:        # constraint violated — shrink
+    while s[right] in seen:        # constraint violated — shrink from left
         seen.remove(s[left])
         left += 1
-    seen.add(s[right])             # expand window
+    seen.add(s[right])             # element is valid — expand window
     max_len = max(max_len, right - left + 1)
 
 return max_len
@@ -392,7 +429,7 @@ right=4(c): 'c' in seen → remove b,c, left=3 → seen={a,c}, len=2
 max = 3 ✓
 ```
 
-**Complexity:** O(n) time, O(k) space where k = window size
+**Complexity:** O(n) time — each element added and removed at most once. O(k) space where k = window size.
 
 ---
 ---
@@ -444,17 +481,19 @@ max = 3 ✓
 
 ```python
 stack = []
-matching = {')': '(', '}': '{', ']': '['}
+matching = {')': '(', '}': '{', ']': '['}   # map each closing to its opening
 
 for char in s:
     if char in '({[':
-        stack.append(char)          # push opening bracket
-    elif char in ')}]':
-        if not stack or stack[-1] != matching[char]:
-            return False            # no match — invalid
-        stack.pop()                 # matched — pop
+        stack.append(char)                   # push opening bracket onto stack
 
-return len(stack) == 0              # valid only if stack is empty
+    elif char in ')}]':
+        # stack empty means no opening to match, or top doesn't match
+        if not stack or stack[-1] != matching[char]:
+            return False
+        stack.pop()                          # valid match — pop the opening bracket
+
+return len(stack) == 0                       # valid only if nothing left unmatched
 ```
 
 **Trace — `"({[]})"`:**
@@ -468,19 +507,23 @@ return len(stack) == 0              # valid only if stack is empty
 stack empty → True ✓
 ```
 
+**Complexity:** O(n) time — one pass. O(n) space — stack holds at most n opening brackets.
+
 ---
 
 ### Template 2 — Monotonic Stack (Next Greater Element)
 
 ```python
-stack = []                          # stores indices
-result = [-1] * len(arr)            # default: no greater element
+stack = []                                        # stores indices of elements
+result = [-1] * len(arr)                          # default: no greater element found
 
 for i in range(len(arr)):
-    while stack and arr[i] > arr[stack[-1]]:  # current breaks order
+    # current element is greater than what's on top — we found its "next greater"
+    while stack and arr[i] > arr[stack[-1]]:
         idx = stack.pop()
-        result[idx] = arr[i]        # current is the next greater for idx
-    stack.append(i)
+        result[idx] = arr[i]                      # arr[i] is the next greater for idx
+
+    stack.append(i)                               # push current index
 
 return result
 ```
@@ -494,7 +537,7 @@ i=3(4): 4>3 → result[2]=4, pop. push → stack=[3]
 result = [3,3,4,-1] ✓
 ```
 
-**Complexity:** O(n) time, O(n) space
+**Complexity:** O(n) time — each element pushed and popped at most once. O(n) space for stack and result.
 
 ---
 ---
@@ -548,15 +591,18 @@ result = [3,3,4,-1] ✓
 left, right = 0, len(arr) - 1
 
 while left <= right:
-    mid = (left + right) // 2      # integer division
-    if arr[mid] == target:
-        return mid                  # found it
-    elif arr[mid] < target:
-        left = mid + 1              # target in right half
-    else:
-        right = mid - 1             # target in left half
+    mid = (left + right) // 2         # integer division to find middle
 
-return -1                           # not found
+    if arr[mid] == target:
+        return mid                     # found it
+
+    elif arr[mid] < target:
+        left = mid + 1                 # target must be in right half
+
+    else:
+        right = mid - 1               # target must be in left half
+
+return -1                             # not found
 ```
 
 **Trace — `[1,3,5,7,9]`, target=7:**
@@ -564,6 +610,8 @@ return -1                           # not found
 left=0, right=4, mid=2(5): 5<7 → left=3
 left=3, right=4, mid=3(7): 7==7 → return 3 ✓
 ```
+
+**Complexity:** O(log n) time — halve the search space each step. O(1) space.
 
 ---
 
@@ -574,15 +622,18 @@ left, right = min_possible, max_possible
 
 while left < right:
     mid = (left + right) // 2
-    if condition(mid):             # mid satisfies condition
-        right = mid                # try smaller — find minimum
+
+    if condition(mid):                 # mid satisfies the condition
+        right = mid                    # try smaller — we want the minimum
     else:
-        left = mid + 1             # mid doesn't work — go bigger
+        left = mid + 1                 # mid doesn't work — go bigger
 
 return left
 ```
 
-**When to use:** *"find minimum X such that condition holds"* — binary search between the smallest and largest possible answer.
+**When to use:** *"find minimum X such that condition holds"* — binary search between smallest and largest possible answer.
+
+**Complexity:** O(log n) time over the answer range. Space depends on condition check.
 
 ---
 
@@ -594,19 +645,22 @@ result = -1
 
 while left <= right:
     mid = (left + right) // 2
+
     if arr[mid] == target:
-        result = mid               # record this, keep searching
-        right = mid - 1            # go left for first occurrence
-        # OR: left = mid + 1       # go right for last occurrence
+        result = mid                   # record this match, keep searching
+        right = mid - 1               # go left to find first occurrence
+        # OR: left = mid + 1          # go right to find last occurrence
+
     elif arr[mid] < target:
         left = mid + 1
+
     else:
         right = mid - 1
 
 return result
 ```
 
-**Complexity:** O(log n) time, O(1) space
+**Complexity:** O(log n) time. O(1) space.
 
 ---
 ---
@@ -661,12 +715,14 @@ return result
 
 ```python
 prev, curr = None, head
+
 while curr:
-    next_node = curr.next    # save rest before redirecting
-    curr.next = prev         # reverse the pointer
-    prev = curr              # slide prev forward
-    curr = next_node         # slide curr forward
-return prev                  # prev is the new head
+    next_node = curr.next    # save the rest of the list before redirecting
+    curr.next = prev         # reverse the pointer — point backwards
+    prev = curr              # slide prev forward to current node
+    curr = next_node         # slide curr forward to what was next
+
+return prev                  # prev is now the new head
 ```
 
 **Trace — `1 → 2 → 3 → 4 → None`:**
@@ -676,31 +732,33 @@ prev      = None
 curr      = 1 → 2 → 3 → 4 → None
 
 STEP 1:
-next_node = 2 → 3 → 4 → None
-curr.next = None
+next_node = 2 → 3 → 4 → None    (saved — won't lose the rest)
+curr.next = None                  (1 now points back to prev)
 prev      = 1 → None
 curr      = 2 → 3 → 4 → None
 
 STEP 2:
 next_node = 3 → 4 → None
-curr.next = 1 → None
+curr.next = 1 → None             (2 now points back to prev)
 prev      = 2 → 1 → None
 curr      = 3 → 4 → None
 
 STEP 3:
 next_node = 4 → None
-curr.next = 2 → 1 → None
+curr.next = 2 → 1 → None        (3 now points back to prev)
 prev      = 3 → 2 → 1 → None
 curr      = 4 → None
 
 STEP 4:
 next_node = None
-curr.next = 3 → 2 → 1 → None
+curr.next = 3 → 2 → 1 → None   (4 now points back to prev)
 prev      = 4 → 3 → 2 → 1 → None
 curr      = None → loop ends
 
 RETURN prev = 4 → 3 → 2 → 1 → None ✓
 ```
+
+**Complexity:** O(n) time — visit every node once. O(1) space — only three pointers.
 
 ---
 
@@ -710,10 +768,12 @@ RETURN prev = 4 → 3 → 2 → 1 → None ✓
 
 ```python
 slow, fast = head, head
+
 while fast and fast.next:
-    slow = slow.next         # 1 step
-    fast = fast.next.next    # 2 steps
-return slow                  # middle of list
+    slow = slow.next           # slow moves 1 step
+    fast = fast.next.next      # fast moves 2 steps
+
+return slow                    # slow is now at the middle
 ```
 
 **Trace — `1 → 2 → 3 → 4 → 5`:**
@@ -728,16 +788,21 @@ STEP 3: fast.next=None → stop
 slow = 3 ← middle ✓
 ```
 
-**Cycle detection:**
+**Cycle detection variant:**
 ```python
 slow, fast = head, head
+
 while fast and fast.next:
     slow = slow.next
     fast = fast.next.next
-    if slow == fast:         # met — cycle exists
+
+    if slow == fast:           # they met — a cycle exists
         return True
-return False
+
+return False                   # fast hit None — no cycle
 ```
+
+**Complexity:** O(n) time. O(1) space — just two pointers.
 
 ---
 
@@ -747,14 +812,15 @@ return False
 
 ```python
 left, right = head, head
+
 for _ in range(k):
-    right = right.next       # move right k ahead
+    right = right.next         # move right k steps ahead to create the gap
 
 while right:
-    left = left.next
+    left = left.next           # move both together, maintaining the gap
     right = right.next
 
-return left
+return left                    # left is now exactly k from the end
 ```
 
 **Trace — `1 → 2 → 3 → 4 → 5`, k=2:**
@@ -770,6 +836,8 @@ STEP 3: left=4, right=None → stop
 left = 4 ← 2nd from end ✓
 ```
 
+**Complexity:** O(n) time — one pass. O(1) space — two pointers.
+
 ---
 
 ### Template 4 — Dummy Node
@@ -777,16 +845,16 @@ left = 4 ← 2nd from end ✓
 **Why:** when the head might change, you need a fixed anchor. Build after dummy, return `dummy.next`.
 
 ```python
-dummy = ListNode(0)
+dummy = ListNode(0)    # fixed anchor before the real list
 dummy.next = head
 curr = dummy
 
-# manipulate via curr...
+# manipulate list via curr...
 
-return dummy.next
+return dummy.next      # real head, even if it changed during manipulation
 ```
 
-**Complexity:** O(n) time, O(1) space
+**Complexity:** O(n) time, O(1) space — just an extra node as anchor.
 
 ---
 ---
@@ -849,13 +917,13 @@ return dummy.next
 
 ```python
 def dfs(node):
-    if not node:               # past a leaf — return neutral value
-        return 0
+    if not node:                      # base case — gone past a leaf, stop recursion
+        return 0                      # return neutral value (0, True, None — depends on problem)
 
-    left  = dfs(node.left)    # answer from left subtree
-    right = dfs(node.right)   # answer from right subtree
+    left  = dfs(node.left)            # get answer from entire left subtree
+    right = dfs(node.right)           # get answer from entire right subtree
 
-    return 1 + max(left, right)  # combine — height example
+    return 1 + max(left, right)       # combine — this example computes height
 ```
 
 **Trace — height of:**
@@ -879,6 +947,8 @@ dfs(1): 1 + max(2,1) = 3 ✓
 
 **Key insight:** answer builds bottom-up. You never think about the whole tree — just one node at a time.
 
+**Complexity:** O(n) time — visit every node once. O(h) space for call stack where h = height.
+
 ---
 
 ### Template 2 — BFS Level by Level
@@ -889,13 +959,14 @@ dfs(1): 1 + max(2,1) = 3 ✓
 from collections import deque
 
 queue = deque([root])
+
 while queue:
-    node = queue.popleft()     # oldest node first
+    node = queue.popleft()            # process oldest node first (FIFO)
 
     if node.left:
-        queue.append(node.left)
+        queue.append(node.left)       # add left child for next level
     if node.right:
-        queue.append(node.right)
+        queue.append(node.right)      # add right child for next level
 ```
 
 **Trace — same tree:**
@@ -913,7 +984,7 @@ Order: 1, 2, 3, 4, 5 (level by level) ✓
 
 **Why deque not list:** `list.pop(0)` is O(n). `deque.popleft()` is O(1). Always use deque for BFS.
 
-**Complexity:** O(n) time. O(h) space DFS where h=height. O(n) space BFS worst case.
+**Complexity:** O(n) time — visit every node once. O(n) space — queue holds up to one full level.
 
 ---
 ---
@@ -968,11 +1039,12 @@ import heapq
 
 heap = []
 for num in nums:
-    heapq.heappush(heap, num)      # push current number
-    if len(heap) > k:
-        heapq.heappop(heap)        # remove smallest — keep only top K
+    heapq.heappush(heap, num)          # push current number into heap
 
-return heap                         # contains K largest
+    if len(heap) > k:
+        heapq.heappop(heap)            # heap too big — remove the smallest
+
+return heap                            # remaining k elements are the largest
 ```
 
 **Trace — `[3,1,4,1,5,9,2,6]`, k=3:**
@@ -988,6 +1060,8 @@ push 6 → [4,5,6,9] → pop 4 → [5,6,9]
 result: [5,6,9] ← top 3 ✓
 ```
 
+**Complexity:** O(n log k) time — n pushes each costing log k. O(k) space — heap never exceeds k.
+
 ---
 
 ### Template 2 — Running Median (Two Heaps)
@@ -995,14 +1069,17 @@ result: [5,6,9] ← top 3 ✓
 ```python
 import heapq
 
-small = []  # max heap (negate values) — lower half
-large = []  # min heap — upper half
+small = []  # max heap (negate values) — stores the lower half
+large = []  # min heap — stores the upper half
 
 def add_num(num):
-    heapq.heappush(small, -num)           # push to lower half
-    if small and large and (-small[0] > large[0]):
-        heapq.heappush(large, -heapq.heappop(small))  # rebalance
+    heapq.heappush(small, -num)                    # always push to lower half first
 
+    # if largest in lower half > smallest in upper half, rebalance
+    if small and large and (-small[0] > large[0]):
+        heapq.heappush(large, -heapq.heappop(small))
+
+    # keep sizes balanced — small can have at most 1 more than large
     if len(small) > len(large) + 1:
         heapq.heappush(large, -heapq.heappop(small))
     if len(large) > len(small):
@@ -1010,9 +1087,11 @@ def add_num(num):
 
 def find_median():
     if len(small) > len(large):
-        return -small[0]
-    return (-small[0] + large[0]) / 2
+        return -small[0]                           # odd total — median is top of lower half
+    return (-small[0] + large[0]) / 2             # even total — average of both tops
 ```
+
+**Complexity:** O(log n) per insertion. O(1) per median query. O(n) space.
 
 ---
 
@@ -1024,19 +1103,20 @@ import heapq
 heap = []
 for i, lst in enumerate(lists):
     if lst:
-        heapq.heappush(heap, (lst[0], i, 0))  # (value, list_idx, element_idx)
+        heapq.heappush(heap, (lst[0], i, 0))      # (value, list index, element index)
 
 result = []
 while heap:
-    val, i, j = heapq.heappop(heap)
+    val, i, j = heapq.heappop(heap)               # pop the global minimum
     result.append(val)
+
     if j + 1 < len(lists[i]):
-        heapq.heappush(heap, (lists[i][j+1], i, j+1))
+        heapq.heappush(heap, (lists[i][j+1], i, j+1))  # push next from same list
 
 return result
 ```
 
-**Complexity:** O(n log k) time where n=total elements, k=number of lists
+**Complexity:** O(n log k) time where n=total elements, k=number of lists. O(k) space for heap.
 
 ---
 ---
@@ -1088,12 +1168,12 @@ return result
 
 ```python
 def backtrack(start, current):
-    result.append(current[:])       # every state is a valid subset
+    result.append(current[:])              # every state is a valid subset — add it
 
     for i in range(start, len(nums)):
-        current.append(nums[i])     # include nums[i]
-        backtrack(i + 1, current)   # recurse with remaining
-        current.pop()               # undo — try without nums[i]
+        current.append(nums[i])            # include nums[i] in current subset
+        backtrack(i + 1, current)          # recurse with remaining elements
+        current.pop()                      # undo — explore without nums[i]
 
 result = []
 backtrack(0, [])
@@ -1109,10 +1189,12 @@ backtrack(0,[])  → add []
     exclude 3 (pop) → [1,2]
     include 3 → backtrack(3,[1,3]) → add [1,3]
   exclude 2 (pop) → [1]
-  include 3 → backtrack(3,[1,3])... (already shown)
+  include 3 → backtrack(3,[1,3])...
 exclude 1 (pop) → []
 ... continues for 2 and 3 alone
 ```
+
+**Complexity:** O(2^n) time — two choices per element. O(n) space for recursion depth.
 
 ---
 
@@ -1121,20 +1203,22 @@ exclude 1 (pop) → []
 ```python
 def backtrack(current):
     if len(current) == len(nums):
-        result.append(current[:])   # complete permutation
+        result.append(current[:])          # complete permutation — add it
         return
 
     for num in nums:
-        if num in current:          # skip used elements
+        if num in current:                 # skip elements already used
             continue
-        current.append(num)
-        backtrack(current)
-        current.pop()               # undo
+        current.append(num)               # choose this element
+        backtrack(current)                 # recurse
+        current.pop()                      # undo the choice
 
 result = []
 backtrack([])
 return result
 ```
+
+**Complexity:** O(n!) time — n choices for first position, n-1 for second, etc. O(n) space.
 
 ---
 
@@ -1143,22 +1227,23 @@ return result
 ```python
 def backtrack(start, current, remaining):
     if remaining == 0:
-        result.append(current[:])   # found valid combination
+        result.append(current[:])          # found a valid combination
         return
+
     if remaining < 0:
-        return                      # pruned — sum exceeded target
+        return                             # pruned — exceeded target, stop this path
 
     for i in range(start, len(candidates)):
         current.append(candidates[i])
-        backtrack(i, current, remaining - candidates[i])
-        current.pop()
+        backtrack(i, current, remaining - candidates[i])   # i not i+1 allows reuse
+        current.pop()                      # undo
 
 result = []
 backtrack(0, [], target)
 return result
 ```
 
-**Complexity:** O(2^n) time worst case — exponential, but pruning makes it much faster in practice
+**Complexity:** O(2^n) worst case but pruning makes it much faster in practice.
 
 ---
 ---
@@ -1207,14 +1292,14 @@ return result
 
 ---
 
-### Template 1 — DFS (Iterative or Recursive)
+### Template 1 — DFS
 
 ```python
 def dfs(node, visited):
-    visited.add(node)
+    visited.add(node)                          # mark as visited before exploring
     for neighbor in graph[node]:
         if neighbor not in visited:
-            dfs(neighbor, visited)
+            dfs(neighbor, visited)             # recurse into unvisited neighbors
 
 visited = set()
 dfs(start, visited)
@@ -1223,21 +1308,28 @@ dfs(start, visited)
 **Grid version (count islands):**
 ```python
 def dfs(r, c):
+    # check bounds and whether this cell is land
     if r < 0 or r >= rows or c < 0 or c >= cols:
-        return                      # out of bounds
+        return
     if grid[r][c] != '1':
-        return                      # water or visited
-    grid[r][c] = '0'               # mark visited
-    dfs(r+1,c); dfs(r-1,c); dfs(r,c+1); dfs(r,c-1)
+        return
+
+    grid[r][c] = '0'                           # mark visited by changing to water
+    dfs(r+1, c)                                # explore all 4 directions
+    dfs(r-1, c)
+    dfs(r, c+1)
+    dfs(r, c-1)
 
 count = 0
 for r in range(rows):
     for c in range(cols):
         if grid[r][c] == '1':
-            dfs(r, c)
+            dfs(r, c)                          # each DFS call = one island
             count += 1
 return count
 ```
+
+**Complexity:** O(V + E) time where V=vertices, E=edges. O(V) space for visited set.
 
 ---
 
@@ -1251,18 +1343,23 @@ visited = {start}
 distance = 0
 
 while queue:
-    for _ in range(len(queue)):    # process one level at a time
+    for _ in range(len(queue)):                # process all nodes at current level
         node = queue.popleft()
+
         if node == target:
             return distance
+
         for neighbor in graph[node]:
             if neighbor not in visited:
                 visited.add(neighbor)
                 queue.append(neighbor)
-    distance += 1
 
-return -1                           # not reachable
+    distance += 1                              # finished one level — increment distance
+
+return -1                                      # target not reachable
 ```
+
+**Complexity:** O(V + E) time. O(V) space for visited and queue.
 
 ---
 
@@ -1274,23 +1371,26 @@ from collections import deque
 in_degree = {node: 0 for node in graph}
 for node in graph:
     for neighbor in graph[node]:
-        in_degree[neighbor] += 1
+        in_degree[neighbor] += 1               # count incoming edges per node
 
+# start with all nodes that have no dependencies
 queue = deque([n for n in in_degree if in_degree[n] == 0])
 order = []
 
 while queue:
     node = queue.popleft()
     order.append(node)
-    for neighbor in graph[node]:
-        in_degree[neighbor] -= 1
-        if in_degree[neighbor] == 0:
-            queue.append(neighbor)
 
-return order if len(order) == len(graph) else []  # empty = cycle exists
+    for neighbor in graph[node]:
+        in_degree[neighbor] -= 1              # remove this dependency
+        if in_degree[neighbor] == 0:
+            queue.append(neighbor)             # no more dependencies — ready to process
+
+# if order doesn't include all nodes, there's a cycle
+return order if len(order) == len(graph) else []
 ```
 
-**Complexity:** O(V + E) time where V=vertices, E=edges
+**Complexity:** O(V + E) time. O(V) space.
 
 ---
 ---
@@ -1332,11 +1432,11 @@ return order if len(order) == len(graph) else []  # empty = cycle exists
 
 ```python
 dp = [0] * (n + 1)
-dp[0] = 1                          # base case
-dp[1] = 1                          # base case
+dp[0] = 1                              # base case — 1 way to stay at start
+dp[1] = 1                              # base case — 1 way to reach step 1
 
 for i in range(2, n + 1):
-    dp[i] = dp[i-1] + dp[i-2]     # combine previous answers
+    dp[i] = dp[i-1] + dp[i-2]         # came from one step back or two steps back
 
 return dp[n]
 ```
@@ -1349,11 +1449,13 @@ dp[3] = dp[2]+dp[1] = 3
 dp[4] = dp[3]+dp[2] = 5 ✓
 ```
 
+**Complexity:** O(n) time. O(n) space — can be reduced to O(1) by keeping only last two values.
+
 ---
 
 ### Sub-pattern 2 — 2D DP (Grid / Two Sequences)
 
-**Use when:** problem involves two sequences or a grid, and each cell depends on neighbors.
+**Use when:** problem involves two sequences or a grid where each cell depends on neighbors.
 
 ```python
 dp = [[0] * (cols + 1) for _ in range(rows + 1)]
@@ -1361,25 +1463,28 @@ dp = [[0] * (cols + 1) for _ in range(rows + 1)]
 for i in range(1, rows + 1):
     for j in range(1, cols + 1):
         if s1[i-1] == s2[j-1]:
-            dp[i][j] = dp[i-1][j-1] + 1   # characters match
+            dp[i][j] = dp[i-1][j-1] + 1          # characters match — extend
         else:
-            dp[i][j] = max(dp[i-1][j], dp[i][j-1])  # take best previous
+            dp[i][j] = max(dp[i-1][j], dp[i][j-1])  # take best of skipping either
 ```
 
 **Use for:** longest common subsequence, edit distance, string matching.
+
+**Complexity:** O(n*m) time and space where n, m are the sequence lengths.
 
 ---
 
 ### Sub-pattern 3 — 0/1 Knapsack
 
-**Use when:** you have items to include or exclude, with a capacity constraint.
+**Use when:** items can be included or excluded, with a capacity constraint. Each item used at most once.
 
 ```python
 dp = [0] * (capacity + 1)
 
 for weight, value in items:
-    for w in range(capacity, weight - 1, -1):  # reverse — prevent reuse
-        dp[w] = max(dp[w], dp[w - weight] + value)
+    # iterate reverse to prevent using the same item twice
+    for w in range(capacity, weight - 1, -1):
+        dp[w] = max(dp[w], dp[w - weight] + value)  # include or exclude this item
 
 return dp[capacity]
 ```
@@ -1392,6 +1497,8 @@ after item(4,5): dp[4]=5, dp[5]=max(7,dp[1]+5)=7
 result: dp[5] = 7 ✓
 ```
 
+**Complexity:** O(n * capacity) time and space.
+
 ---
 
 ### Sub-pattern 4 — Unbounded Knapsack
@@ -1400,11 +1507,12 @@ result: dp[5] = 7 ✓
 
 ```python
 dp = [float('inf')] * (amount + 1)
-dp[0] = 0                          # base: 0 coins for amount 0
+dp[0] = 0                              # base: 0 coins needed for amount 0
 
 for coin in coins:
-    for w in range(coin, amount + 1):  # forward — allow reuse
-        dp[w] = min(dp[w], dp[w - coin] + 1)
+    # iterate forward — allows using the same coin multiple times
+    for w in range(coin, amount + 1):
+        dp[w] = min(dp[w], dp[w - coin] + 1)   # use this coin or don't
 
 return dp[amount] if dp[amount] != float('inf') else -1
 ```
@@ -1417,23 +1525,27 @@ after coin 5: dp=[0,1,1,2,2,1,2]
 result: dp[6] = 2 (5+1) ✓
 ```
 
+**Complexity:** O(amount * coins) time. O(amount) space.
+
 ---
 
 ### Sub-pattern 5 — Interval DP
 
-**Use when:** the problem involves a range and splitting it at different points.
+**Use when:** the problem involves a range and you need to try all possible split points.
 
 ```python
 dp = [[0] * n for _ in range(n)]
 
-for length in range(2, n + 1):          # increasing lengths
+for length in range(2, n + 1):                  # try all lengths starting from 2
     for i in range(n - length + 1):
         j = i + length - 1
-        for k in range(i, j):           # try all split points
-            dp[i][j] = max(dp[i][j], dp[i][k] + dp[k+1][j] + cost(i,j,k))
+        for k in range(i, j):                   # try all split points within range
+            dp[i][j] = max(dp[i][j], dp[i][k] + dp[k+1][j] + cost(i, j, k))
 ```
 
 **Use for:** burst balloons, matrix chain multiplication, palindrome partitioning.
+
+**Complexity:** O(n³) time. O(n²) space.
 
 ---
 
@@ -1445,16 +1557,18 @@ for length in range(2, n + 1):          # increasing lengths
 dp = [[False] * n for _ in range(n)]
 
 for i in range(n):
-    dp[i][i] = True                    # single char is palindrome
+    dp[i][i] = True                            # single character is always a palindrome
 
 for length in range(2, n + 1):
     for i in range(n - length + 1):
         j = i + length - 1
+
+        # palindrome if outer chars match and inner substring is also palindrome
         if s[i] == s[j] and (length == 2 or dp[i+1][j-1]):
             dp[i][j] = True
 ```
 
-**Complexity:** O(n²) to O(n³) depending on sub-pattern. O(n) to O(n²) space.
+**Complexity:** O(n²) time and space.
 
 ---
 ---
@@ -1505,12 +1619,13 @@ for length in range(2, n + 1):
 ### Template 1 — Interval Scheduling (Max Non-overlapping)
 
 ```python
-intervals.sort(key=lambda x: x[1])    # sort by end time
+intervals.sort(key=lambda x: x[1])    # sort by end time — earliest ending first
+
 count = 0
-last_end = float('-inf')
+last_end = float('-inf')               # track where the last picked interval ended
 
 for start, end in intervals:
-    if start >= last_end:              # no overlap with last picked
+    if start >= last_end:              # no overlap with last picked interval
         count += 1
         last_end = end                 # update last end time
 
@@ -1526,19 +1641,22 @@ sorted by end: [(1,3),(2,4),(3,5)]
 result: 2 ✓
 ```
 
+**Complexity:** O(n log n) time for sorting. O(1) space.
+
 ---
 
 ### Template 2 — Jump Game
 
 ```python
-max_reach = 0
+max_reach = 0                          # farthest index reachable so far
 
 for i in range(len(nums)):
     if i > max_reach:
-        return False               # can't reach position i
-    max_reach = max(max_reach, i + nums[i])
+        return False                   # can't even reach this position — stuck
 
-return True
+    max_reach = max(max_reach, i + nums[i])  # update farthest reachable from here
+
+return True                            # made it through without getting stuck
 ```
 
 **Trace — `[2,3,1,1,4]`:**
@@ -1551,7 +1669,7 @@ i=4: max_reach=max(4,4+4)=8
 return True ✓
 ```
 
-**Complexity:** O(n log n) for sorting-based, O(n) for scan-based greedy
+**Complexity:** O(n) time — one pass. O(1) space.
 
 ---
 ---
@@ -1602,14 +1720,15 @@ return True ✓
 ### Template 1 — Merge Overlapping Intervals
 
 ```python
-intervals.sort(key=lambda x: x[0])    # sort by start time
-merged = [intervals[0]]
+intervals.sort(key=lambda x: x[0])    # sort by start time so overlaps are adjacent
+
+merged = [intervals[0]]                # start with first interval
 
 for start, end in intervals[1:]:
-    if start <= merged[-1][1]:         # overlaps with last merged
-        merged[-1][1] = max(merged[-1][1], end)  # extend
+    if start <= merged[-1][1]:         # current interval overlaps with last merged
+        merged[-1][1] = max(merged[-1][1], end)   # extend the last merged interval
     else:
-        merged.append([start, end])    # no overlap — add new
+        merged.append([start, end])    # no overlap — start a new merged interval
 
 return merged
 ```
@@ -1622,6 +1741,8 @@ start with [1,3]
 [8,10]: 8>6 → add → [[1,6],[8,10]] ✓
 ```
 
+**Complexity:** O(n log n) time for sorting. O(n) space for output.
+
 ---
 
 ### Template 2 — Minimum Meeting Rooms
@@ -1629,19 +1750,20 @@ start with [1,3]
 ```python
 import heapq
 
-intervals.sort(key=lambda x: x[0])    # sort by start
-heap = []                              # tracks end times of active meetings
+intervals.sort(key=lambda x: x[0])    # sort by start time
+
+heap = []                              # min heap — tracks end times of active meetings
 
 for start, end in intervals:
-    if heap and heap[0] <= start:
-        heapq.heapreplace(heap, end)   # reuse room — replace earliest end
+    if heap and heap[0] <= start:      # earliest-ending meeting is done — reuse that room
+        heapq.heapreplace(heap, end)
     else:
-        heapq.heappush(heap, end)      # new room needed
+        heapq.heappush(heap, end)      # no free room — open a new one
 
-return len(heap)
+return len(heap)                       # number of rooms = number of active meetings at peak
 ```
 
-**Complexity:** O(n log n) time, O(n) space
+**Complexity:** O(n log n) time. O(n) space for heap.
 
 ---
 ---
@@ -1695,8 +1817,8 @@ return len(heap)
 ```python
 result = 0
 for num in nums:
-    result ^= num              # identical pairs cancel out (x^x=0)
-return result                  # only unique number remains
+    result ^= num              # identical pairs cancel out (x^x=0), unique survives
+return result                  # only the unique number remains
 ```
 
 **Trace — `[2,3,2,4,4]`:**
@@ -1708,6 +1830,8 @@ return result                  # only unique number remains
 7 ^ 4 = 3 ✓  (only 3 appeared once)
 ```
 
+**Complexity:** O(n) time — one pass. O(1) space — just one variable.
+
 ---
 
 ### Template 2 — Count Set Bits
@@ -1715,7 +1839,7 @@ return result                  # only unique number remains
 ```python
 count = 0
 while n:
-    n &= (n - 1)               # clears the lowest set bit each time
+    n &= (n - 1)               # clears the lowest set bit each iteration
     count += 1
 return count
 ```
@@ -1728,25 +1852,27 @@ return count
 result: 3 set bits ✓
 ```
 
+**Complexity:** O(k) time where k = number of set bits. O(1) space.
+
 ---
 
 ### Template 3 — Bit Masking
 
 ```python
-# set bit k
+# set bit k — turn it on
 flags |= (1 << k)
 
-# check bit k
+# check bit k — is it on?
 is_set = (flags >> k) & 1
 
-# clear bit k
+# clear bit k — turn it off
 flags &= ~(1 << k)
 
-# check if power of 2
+# check if power of 2 — only one bit should be set
 is_power_of_2 = n > 0 and (n & (n - 1)) == 0
 ```
 
-**Complexity:** O(1) for most bit operations, O(log n) for counting set bits
+**Complexity:** O(1) for all bit operations.
 
 ---
 ---
@@ -1764,7 +1890,7 @@ Things to know cold. These come up in almost every problem.
 freq = {'a': 3, 'b': 1}
 for k, v in freq.items():     # k=key, v=value
     print(k, v)
-for k in freq:                # keys only — common mistake
+for k in freq:                # keys only — common mistake, no values
 
 # sorting by value
 sorted(freq.items(), key=lambda x: x[1], reverse=True)   # descending
@@ -1772,12 +1898,12 @@ sorted(freq.items(), key=lambda x: x[1], reverse=False)  # ascending
 
 # Counter — dict with counting built in
 from collections import Counter
-freq = Counter("aabbcc")      # {'a':2,'b':2,'c':2}
-freq = Counter([1,2,2,3])     # {2:2,1:1,3:1}
+freq = Counter("aabbcc")      # Counter({'a':2,'b':2,'c':2})
+freq = Counter([1,2,2,3])     # Counter({2:2,1:1,3:1})
 
-# tuple vs dict
-('a', 3)    # tuple — what sorted() gives back
-{'a': 3}    # dict — what Counter/freq looks like
+# tuple vs dict — don't confuse syntax
+('a', 3)    # tuple — what sorted() gives back, access with x[0] x[1]
+{'a': 3}    # dict — what Counter/freq looks like, access with freq['a']
 
 # check type when confused
 print(type(x))
@@ -1793,7 +1919,7 @@ q = deque([1, 2, 3])
 q.append(4)          # add right — O(1)
 q.appendleft(0)      # add left — O(1)
 q.pop()              # remove right — O(1)
-q.popleft()          # remove left — O(1)  ← use for BFS, not list.pop(0)
+q.popleft()          # remove left — O(1)  ← always use this for BFS, not list.pop(0)
 ```
 
 ---
@@ -1805,13 +1931,13 @@ import heapq
 heap = []
 heapq.heappush(heap, 3)
 heapq.heappush(heap, 1)
-heapq.heappop(heap)          # returns 1 — always min
+heapq.heappop(heap)          # returns 1 — always the minimum
 
-# max heap — negate values
+# max heap — negate values to simulate
 heapq.heappush(heap, -5)
 -heapq.heappop(heap)         # returns 5
 
-# heapify existing list
+# heapify existing list in place
 arr = [3,1,4,1,5]
 heapq.heapify(arr)           # O(n) — converts in place
 ```
@@ -1821,11 +1947,11 @@ heapq.heapify(arr)           # O(n) — converts in place
 ### Useful Built-ins
 
 ```python
-# enumerate — index + value
+# enumerate — get index and value together
 for i, x in enumerate(arr):
     print(i, x)
 
-# zip — pair two lists
+# zip — pair two lists element by element
 for a, b in zip(list1, list2):
     print(a, b)
 
@@ -1834,8 +1960,8 @@ arr.sort(key=lambda x: x[1])         # sort list of tuples by second element
 sorted(arr, key=lambda x: -x[1])     # descending
 
 # string operations
-s.split()                             # split by whitespace
-' '.join(words)                       # join list into string
+s.split()                             # split by whitespace into list
+' '.join(words)                       # join list of strings into one string
 s[::-1]                               # reverse a string
 ord('a')                              # character to ASCII (97)
 chr(97)                               # ASCII to character ('a')
