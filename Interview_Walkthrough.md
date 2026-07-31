@@ -6,21 +6,8 @@
 
 ## Table of Contents
 
-- [The Mindset](#the-mindset)
 - [The Framework — what to do step by step](#the-framework)
-- [Handling Ambiguity](#handling-ambiguity)
-- [Communicating Your Thinking](#communicating-your-thinking)
-- [When You're Stuck](#when-youre-stuck)
-- [Complexity Analysis — how to talk about it](#complexity-analysis)
-- [Green Flags / Red Flags](#green-flags--red-flags)
-
----
-
-## The Mindset
-
-An interview is not a test. It is a **collaborative problem-solving session** where the interviewer wants to see how you think, not just what you know.
-
-Senior-level interviews deliberately introduce ambiguity. The right move is never to wait — it's to drive.
+- [What to Master Before Interview Day](#what-to-master-before-interview-day)
 
 ---
 
@@ -78,74 +65,48 @@ Before they ask:
 
 ---
 
-## Handling Ambiguity
+## What to Master Before Interview Day
 
-Ambiguity in senior interviews is **deliberate**. The interviewer is watching whether you:
-
-- Ask a clarifying question upfront ✓
-- State your assumptions aloud ✓
-- Check in at transitions ("does this approach make sense before I continue?") ✓
-- Wait silently and hope they fill the gap ✗
-
-One good question beats five minutes of silent coding.
+These are the seven areas that determine whether you pass or fail. Technical knowledge alone is not enough. All seven must be addressed.
 
 ---
 
-## Communicating Your Thinking
+### 1 — Pattern Recognition
 
-Narrate as you go. Examples:
-
-- *"I'm using a set here because I only need existence, not the count."*
-- *"I'm iterating from the right because..."*
-- *"This feels like it could be O(n²) — let me think if there's a better way."*
-
-If you realize you're going down the wrong path, say so:
-*"Actually, this doesn't handle the case where values repeat — let me reconsider."*
-
-Pivoting out loud is a green flag. Silently scrapping and restarting is a red flag.
+**What ready looks like:** Given any Leetcode problem, you can identify the correct pattern within 2-3 minutes without hints. You are not memorizing solutions — you are recognizing the shape of the problem.
 
 ---
 
-## When You're Stuck
+### 2 — Real Problem → Pattern → Solution Translation
 
-Don't go silent. Say:
-
-1. *"Let me think through the brute force first."*
-2. *"What if I sorted the input first — would that help?"*
-3. *"I'm thinking about this pattern but I'm not sure it applies here — can I talk through it?"*
-
-Interviewers will often give hints if you're visibly reasoning. They give nothing if you're silent.
+**What ready looks like:** When given a real-world problem statement ("we have millions of users signing up..."), you can strip away the business language, identify the underlying CS problem, map it to a pattern, and begin solving. This is the most underrated skill in interviews. Most candidates practice clean Leetcode problems. Interviewers give messy real-world descriptions.
 
 ---
 
-## Complexity Analysis
+### 3 — Interview Simulation Under Pressure
 
-### How to think about it
-
-| Situation | Complexity |
-|---|---|
-| Single loop over n elements | O(n) |
-| Two nested loops | O(n²) |
-| Loop + hash map lookup inside | O(n) — lookup is O(1) |
-| Sorting | O(n log n) |
-| Binary search | O(log n) |
-
-### How to say it
-
-*"Time complexity is O(n) — we make one pass through the array, and each hash map operation is O(1). Space is O(n) in the worst case because we store every element."*
-
-Always mention both time **and** space. Forgetting space is a common slip.
+**What ready looks like:** You can solve a Medium Leetcode problem in under 35 minutes while talking out loud, with no hints, and with someone watching. Silence under pressure is the most common failure mode. This only gets fixed through repetition — not more studying.
 
 ---
 
-## Green Flags / Red Flags
+### 4 — System Design
 
-| Green flag | Red flag |
-|---|---|
-| Asks a clarifying question first | Starts coding immediately |
-| States brute force before optimizing | Jumps to optimal without explaining why |
-| Narrates thinking throughout | Goes silent for minutes |
-| Tests with an example | Submits without tracing through |
-| Pivots out loud when wrong | Silently erases and restarts |
-| States complexity unprompted | Waits to be asked |
-| Checks in at transitions | Never engages the interviewer |
+**What ready looks like:** Given any system design prompt, you can drive the conversation — clarify scope, identify components, draw the architecture, state tradeoffs, and handle follow-up constraints. You raise tradeoffs before being asked. You handle scale, failure points, and bottlenecks unprompted.
+
+---
+
+### 5 — Behavioral Stories
+
+**What ready looks like:** You have 8-10 strong STAR stories from your own experience, each with concrete metrics, each adaptable to multiple principles. You can deliver any of them in under 2 minutes, out loud, without rambling. One weak behavioral round cancels strong technical performance.
+
+---
+
+### 6 — Mock Interviews
+
+**What ready looks like:** You have completed at least 15 full 45-minute mock sessions before applying. Not practice problems — full simulations with another person, timed, no pausing, no hints. The first 3-4 mocks will be uncomfortable. That discomfort is the point.
+
+---
+
+### 7 — Complexity Analysis Communication
+
+**What ready looks like:** You state time and space complexity unprompted, before the interviewer asks, with a clear explanation of why. *"This is O(n) time because we make one pass, and O(n) space because we store at most n elements in the map."* This is an explicit green flag interviewers look for. Forgetting space complexity is one of the most common slips.
