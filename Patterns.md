@@ -2236,3 +2236,1508 @@ Three parts:
 | Binary search tree | O(log n) | O(log n) | O(log n) | O(log n) |
 | Heap | O(1) min/max | O(n) | O(log n) | O(log n) |
 | Linked list | O(n) | O(n) | O(1) | O(1) |
+# 4. Stack
+
+### Mental Trigger
+> *"Do I need to remember previous elements in order — and might I need to undo or revisit the most recent one?"*
+
+**Why this works:** a stack gives O(1) access to the most recently seen element. Last in, first out — perfect for matching, nesting, or undoing in reverse order.
+
+---
+
+### Translation Table
+
+| You hear this... | Pattern | Template |
+|---|---|---|
+| "matching brackets", "valid nesting" | Stack push/pop | 1 |
+| "undo", "go back", "reverse order" | Stack | 1 |
+| "next greater element", "daily temperatures" | Monotonic stack | 2 |
+| "evaluate expression", "calculator" | Stack | 1 |
+| "nested structure", "recursive-looking" | Stack | 1 |
+
+---
+
+### Questions to Ask Before Coding
+
+**Q1 — Am I matching something to a previous element, or finding the next element that breaks an order?**
+- Matching → Template 1 (push/pop validation)
+- Next greater/smaller → Template 2 (monotonic stack)
+
+**Q2 — What do I push onto the stack?**
+- The element itself (for matching) → Template 1
+- The index (for position-based problems) → Template 2
+
+**Q3 — When do I pop?**
+- On a closing match → Template 1
+- When current element breaks the monotonic order → Template 2
+
+---
+
+### Template 1 — Matching / Validation
+
+```python
+stack = []
+matching = {')': '(', '}': '{', ']': '['}
+
+for char in s:
+    if char in '({[':
+        stack.append(char)          # push opening bracket
+    elif char in ')}]':
+        if not stack or stack[-1] != matching[char]:
+            return False            # no match — invalid
+        stack.pop()                 # matched — pop
+
+return len(stack) == 0             # valid only if nothing unmatched
+```
+
+**Example — are all brackets matched in `"({[]})"`?**
+```
+Q1: matching brackets → Template 1
+Q2: push the opening bracket itself
+Q3: pop when closing bracket matches top
+
+( → push → stack=[(]
+{ → push → stack=[(,{]
+[ → push → stack=[(,{,[]
+] → matches [ → pop → stack=[(,{]
+} → matches { → pop → stack=[(]
+) → matches ( → pop → stack=[]
+empty → True ✓
+```
+**Complexity:** O(n) time. O(n) space.
+
+---
+
+### Template 2 — Monotonic Stack
+
+```python
+stack = []                          # stores indices
+result = [-1] * len(arr)            # default: no greater element
+
+for i in range(len(arr)):
+    while stack and arr[i] > arr[stack[-1]]:  # current breaks order
+        idx = stack.pop()
+        result[idx] = arr[i]        # current is next greater for idx
+    stack.append(i)
+
+return result
+```
+
+**Example — next greater element for `[2,1,3,4]`:**
+```
+Q1: next element breaking order → Template 2
+Q2: push index (need position)
+Q3: pop when current > top
+
+i=0(2): stack=[0]
+i=1(1): 1<2 → push → stack=[0,1]
+i=2(3): 3>1 → result[1]=3, pop. 3>2 → result[0]=3, pop. push → stack=[2]
+i=3(4): 4>3 → result[2]=4, pop. push → stack=[3]
+result=[3,3,4,-1] ✓
+```
+**Complexity:** O(n) time. O(n) space.
+
+---
+---
+
+# 5. Binary Search
+
+### Mental Trigger
+> *"Is the input sorted — or can I define a condition where everything to the left fails and everything to the right passes?"*
+
+**Why this works:** each step eliminates half the remaining candidates. O(log n) instead of O(n).
+
+---
+
+### Translation Table
+
+| You hear this... | Pattern | Template |
+|---|---|---|
+| "sorted array", "find target" | Classic binary search | 1 |
+| "first/last occurrence" | Binary search with boundary tracking | 3 |
+| "minimum/maximum that satisfies condition" | Binary search on answer | 2 |
+| "find broken version", "first bad commit" | Binary search on condition | 2 |
+| "rotated sorted array" | Modified binary search | 1 variant |
+
+---
+
+### Questions to Ask Before Coding
+
+**Q1 — Am I searching for an exact value, or a boundary?**
+- Exact value → Template 1 (stop at first match)
+- First/last occurrence → Template 3 (keep searching after match)
+
+**Q2 — Is the search space the input array, or the answer itself?**
+- Input array → Template 1 or 3
+- Answer is a number in a range (e.g. minimum capacity) → Template 2
+
+**Q3 — What is my left and right bound?**
+- Searching array → `left=0, right=len-1`
+- Searching answer space → `left=min_possible, right=max_possible`
+
+---
+
+### Template 1 — Classic Binary Search
+
+```python
+left, right = 0, len(arr) - 1
+
+while left <= right:
+    mid = (left + right) // 2
+
+    if arr[mid] == target:
+        return mid                  # found
+    elif arr[mid] < target:
+        left = mid + 1              # target in right half
+    else:
+        right = mid - 1             # target in left half
+
+return -1
+```
+
+**Example — find target=7 in `[1,3,5,7,9]`:**
+```
+Q1: exact value → Template 1
+Q2: searching array → left=0, right=4
+Q3: standard bounds
+
+left=0, right=4, mid=2(5): 5<7 → left=3
+left=3, right=4, mid=3(7): 7==7 → return 3 ✓
+```
+**Complexity:** O(log n) time. O(1) space.
+
+---
+
+### Template 2 — Binary Search on Answer
+
+```python
+left, right = min_possible, max_possible
+
+while left < right:
+    mid = (left + right) // 2
+
+    if condition(mid):              # mid satisfies condition
+        right = mid                 # try smaller — find minimum
+    else:
+        left = mid + 1              # doesn't work — go bigger
+
+return left
+```
+
+**Example — minimum ship capacity to deliver in D days:**
+```
+Q1: boundary — minimum that works → Template 2
+Q2: answer space → left=max(weights), right=sum(weights)
+Q3: condition = can deliver all in D days at capacity mid
+
+left=5, right=15, mid=10 → works → right=10
+left=5, right=10, mid=7  → works → right=7
+left=5, right=7,  mid=6  → works → right=6
+left=5, right=6,  mid=5  → fails → left=6
+return 6 ✓
+```
+**Complexity:** O(log n) time. O(1) space.
+
+---
+
+### Template 3 — First/Last Occurrence
+
+```python
+left, right = 0, len(arr) - 1
+result = -1
+
+while left <= right:
+    mid = (left + right) // 2
+
+    if arr[mid] == target:
+        result = mid                # record match, keep searching
+        right = mid - 1            # go left for first occurrence
+        # OR: left = mid + 1       # go right for last occurrence
+    elif arr[mid] < target:
+        left = mid + 1
+    else:
+        right = mid - 1
+
+return result
+```
+
+**Example — first occurrence of 2 in `[1,2,2,2,3]`:**
+```
+Q1: first occurrence — boundary → Template 3
+Q2: searching array
+Q3: left=0, right=4
+
+mid=2(idx 2): match → result=2, search left
+mid=2(idx 1): match → result=1, search left
+mid=1(idx 0): no match → search right
+return 1 ✓
+```
+**Complexity:** O(log n) time. O(1) space.
+
+---
+---
+
+# 6. Linked List
+
+### Mental Trigger
+> *"Is the data sequential where each item only knows what comes next — and do I need to manipulate connections rather than values?"*
+
+**Why this works:** linked lists have no indices. You can't jump to position 5. Every problem reduces to: which pointers do I move, and in what order?
+
+---
+
+### Translation Table
+
+| You hear this... | Pattern | Template |
+|---|---|---|
+| "reverse without extra memory" | Pointer reversal | 1 |
+| "detect loop or cycle" | Fast/slow pointers | 2 |
+| "find middle without knowing length" | Fast/slow pointers | 2 |
+| "Kth from end without full scan" | Two pointers gap k apart | 3 |
+| "merge two ordered streams" | Dummy node + two pointers | 4 |
+
+---
+
+### Questions to Ask Before Coding
+
+**Q1 — Do I need to track the node before the one I'm changing?**
+- Yes → need `prev` pointer → Template 1
+- No → continue to Q2
+
+**Q2 — Do I need two pointers at different speeds, or a fixed gap?**
+- Different speeds → Template 2 (middle, cycle detection)
+- Fixed gap k → Template 3 (kth from end)
+
+**Q3 — Does the head itself change?**
+- Yes → Template 4 (dummy node as fixed anchor)
+- No → manipulate directly
+
+---
+
+### Template 1 — Reverse (Pointer Reversal)
+
+```python
+prev, curr = None, head
+
+while curr:
+    next_node = curr.next           # save rest before losing it
+    curr.next = prev                # redirect pointer backwards
+    prev = curr                     # slide forward
+    curr = next_node
+
+return prev                         # prev is the new head
+```
+
+**Example — reverse `1→2→3→4`:**
+```
+Q1: need prev to redirect → Template 1
+
+INITIAL: prev=None, curr=1→2→3→4
+STEP 1:  next=2→3→4, 1→None | prev=1, curr=2
+STEP 2:  next=3→4,   2→1    | prev=2, curr=3
+STEP 3:  next=4,     3→2    | prev=3, curr=4
+STEP 4:  next=None,  4→3    | prev=4, curr=None
+return 4→3→2→1 ✓
+```
+**Complexity:** O(n) time. O(1) space.
+
+---
+
+### Template 2 — Fast/Slow Pointers
+
+```python
+slow, fast = head, head
+
+while fast and fast.next:
+    slow = slow.next                # 1 step
+    fast = fast.next.next           # 2 steps
+
+return slow                         # middle — or check slow==fast for cycle
+```
+
+**Example — find middle of `1→2→3→4→5`:**
+```
+Q1: no prev needed
+Q2: different speeds → Template 2
+
+STEP 1: slow=2, fast=3
+STEP 2: slow=3, fast=5
+STEP 3: fast.next=None → stop
+slow=3 ← middle ✓
+```
+**Complexity:** O(n) time. O(1) space.
+
+---
+
+### Template 3 — Kth From End (Fixed Gap)
+
+```python
+left, right = head, head
+
+for _ in range(k):
+    right = right.next              # create gap of k
+
+while right:
+    left = left.next
+    right = right.next
+
+return left                         # left is kth from end
+```
+
+**Example — 2nd from end of `1→2→3→4→5`:**
+```
+Q1: no prev needed
+Q2: fixed gap k=2 → Template 3
+
+After gap: left=1, right=3
+STEP 1: left=2, right=4
+STEP 2: left=3, right=5
+STEP 3: right=None → stop
+return 4 ✓
+```
+**Complexity:** O(n) time. O(1) space.
+
+---
+
+### Template 4 — Dummy Node
+
+```python
+dummy = ListNode(0)                 # fixed anchor before real list
+dummy.next = head
+curr = dummy
+
+# manipulate via curr...
+
+return dummy.next                   # real head even if it changed
+```
+
+**Example — use when merging lists or deleting head node:**
+```
+Q3: head might change → Template 4
+Dummy absorbs head changes — always return dummy.next
+```
+**Complexity:** O(n) time. O(1) space.
+
+---
+---
+
+# 7. Trees
+
+### Mental Trigger
+> *"Is the data hierarchical with branching parent-child relationships — and does the same logic apply at every level?"*
+
+**Why this works:** every node is the root of its own subtree. Solve for one node assuming children are already solved — recursion handles the rest.
+
+---
+
+### Translation Table
+
+| You hear this... | Pattern | Template |
+|---|---|---|
+| "total", "sum", "aggregate across all" | DFS bottom-up | 1 |
+| "longest", "deepest", "height", "diameter" | DFS with return values | 1 |
+| "validate", "compare two trees", "mirror" | DFS recursive | 1 |
+| "level by level", "same depth", "layer" | BFS | 2 |
+| "shortest path", "fewest steps" | BFS | 2 |
+
+---
+
+### Questions to Ask Before Coding
+
+**Q1 — Do I need information from the leaves to answer the question at the root?**
+- Yes → DFS bottom-up → Template 1
+- No → continue to Q2
+
+**Q2 — Does the answer involve processing nodes level by level?**
+- Yes → BFS → Template 2
+
+**Q3 — What do I return from each DFS call?**
+- This fills your `return` statement in Template 1
+- Height → `return 1 + max(left, right)`
+- Sum → `return node.val + left + right`
+- Valid → `return left and right and <condition>`
+
+---
+
+### Template 1 — DFS Recursive
+
+```python
+def dfs(node):
+    if not node:                    # base case — past a leaf
+        return 0                    # neutral value for this problem
+
+    left  = dfs(node.left)          # answer from left subtree
+    right = dfs(node.right)         # answer from right subtree
+
+    return ...                      # Q3: combine left, right, node.val
+```
+
+**Example — height of tree:**
+```
+Q1: need leaf info → DFS → Template 1
+Q3: return 1 + max(left, right)
+
+        1
+       / \
+      2   3
+     / \
+    4   5
+
+dfs(4)=1, dfs(5)=1
+dfs(2)=1+max(1,1)=2
+dfs(3)=1
+dfs(1)=1+max(2,1)=3 ✓
+```
+**Complexity:** O(n) time. O(h) space where h=height.
+
+---
+
+### Template 2 — BFS Level by Level
+
+```python
+from collections import deque
+
+queue = deque([root])
+
+while queue:
+    node = queue.popleft()          # process oldest node first
+
+    # process node here
+
+    if node.left:  queue.append(node.left)
+    if node.right: queue.append(node.right)
+```
+
+**Example — level by level traversal:**
+```
+Q1: no leaf info needed
+Q2: level by level → BFS → Template 2
+
+queue=[1] → pop 1, add 2,3 → queue=[2,3]
+pop 2, add 4,5 → queue=[3,4,5]
+pop 3 → queue=[4,5]
+pop 4, pop 5 → queue=[]
+order: 1,2,3,4,5 ✓
+```
+**Complexity:** O(n) time. O(n) space.
+
+---
+---
+
+# 8. Heap / Priority Queue
+
+### Mental Trigger
+> *"Do I need to repeatedly find the smallest or largest element from a changing collection?"*
+
+**Why this works:** a heap gives O(1) access to min or max, and O(log n) insert. Better than sorting when you only need the top K or a running extreme.
+
+---
+
+### Translation Table
+
+| You hear this... | Pattern | Template |
+|---|---|---|
+| "top K", "K largest", "K most frequent" | Min heap size K | 1 |
+| "K smallest" | Max heap size K | 1 variant |
+| "running median" | Two heaps (max + min) | 2 |
+| "merge K sorted lists" | Min heap with K elements | 3 |
+| "next task by priority" | Min/max heap | 1 |
+
+---
+
+### Questions to Ask Before Coding
+
+**Q1 — Do I need top K largest, or top K smallest?**
+- Top K largest → min heap of size K (eject smallest) → Template 1
+- Top K smallest → max heap of size K (eject largest, negate values) → Template 1 variant
+
+**Q2 — Is the collection static (given upfront) or dynamic (streaming)?**
+- Static → heapify once, pop K times
+- Dynamic/streaming → maintain heap as elements arrive → Template 1
+
+**Q3 — Do I need a running median, or merge multiple sorted sources?**
+- Running median → two heaps → Template 2
+- Merge K sorted lists → min heap with one element per list → Template 3
+
+---
+
+### Template 1 — Top K Largest (Min Heap)
+
+```python
+import heapq
+
+heap = []
+for num in nums:
+    heapq.heappush(heap, num)       # push element
+    if len(heap) > k:
+        heapq.heappop(heap)         # eject smallest — keep only top K
+
+return heap                         # K largest elements remain
+```
+
+**Example — top 3 largest from `[3,1,4,1,5,9,2,6]`:**
+```
+Q1: top K largest → min heap → Template 1
+Q2: static input
+
+push 3→[3], push 1→[1,3], push 4→[1,3,4]
+push 1→pop 1→[1,3,4], push 5→pop 1→[3,4,5]
+push 9→pop 3→[4,5,9], push 2→pop 2→[4,5,9]
+push 6→pop 4→[5,6,9] ✓
+```
+**Complexity:** O(n log k) time. O(k) space.
+
+---
+
+### Template 2 — Running Median (Two Heaps)
+
+```python
+import heapq
+
+small = []      # max heap (negate) — lower half
+large = []      # min heap — upper half
+
+def add_num(num):
+    heapq.heappush(small, -num)
+
+    if small and large and (-small[0] > large[0]):
+        heapq.heappush(large, -heapq.heappop(small))
+
+    if len(small) > len(large) + 1:
+        heapq.heappush(large, -heapq.heappop(small))
+    if len(large) > len(small):
+        heapq.heappush(small, -heapq.heappop(large))
+
+def find_median():
+    if len(small) > len(large):
+        return -small[0]
+    return (-small[0] + large[0]) / 2
+```
+
+**Example — median after each number arrives:**
+```
+Q3: running median → two heaps → Template 2
+Lower half in max heap, upper half in min heap
+Median is at the boundary between them
+```
+**Complexity:** O(log n) per insert. O(1) per median query.
+
+---
+
+### Template 3 — Merge K Sorted Lists
+
+```python
+import heapq
+
+heap = []
+for i, lst in enumerate(lists):
+    if lst:
+        heapq.heappush(heap, (lst[0], i, 0))   # (value, list_idx, elem_idx)
+
+result = []
+while heap:
+    val, i, j = heapq.heappop(heap)            # global minimum
+    result.append(val)
+    if j + 1 < len(lists[i]):
+        heapq.heappush(heap, (lists[i][j+1], i, j+1))
+
+return result
+```
+
+**Example — merge `[[1,4,7],[2,5,8],[3,6,9]]`:**
+```
+Q3: merge K sorted → Template 3
+
+initial heap=[(1,0,0),(2,1,0),(3,2,0)]
+pop 1 → result=[1], push (4,0,1)
+pop 2 → result=[1,2], push (5,1,1)
+pop 3 → result=[1,2,3], push (6,2,1)
+...continues → [1,2,3,4,5,6,7,8,9] ✓
+```
+**Complexity:** O(n log k) time where k=number of lists.
+
+---
+---
+
+# 9. Backtracking
+
+### Mental Trigger
+> *"Do I need to explore all possible combinations or paths — and can I prune dead ends early?"*
+
+**Why this works:** build incrementally. At each step, make a choice, recurse, then undo (backtrack). Cut off paths the moment they can't lead to a valid answer.
+
+---
+
+### Translation Table
+
+| You hear this... | Pattern | Template |
+|---|---|---|
+| "all subsets", "power set" | Include/exclude each element | 1 |
+| "all permutations" | Try each unused element at each position | 2 |
+| "all combinations that sum to target" | Running sum with pruning | 3 |
+| "solve puzzle", "fill grid" | Try, recurse, undo on contradiction | 3 variant |
+| "all paths in graph/tree" | DFS with path tracking | 1 variant |
+
+---
+
+### Questions to Ask Before Coding
+
+**Q1 — Does order matter in the output?**
+- No (subsets) → iterate forward from `start`, never revisit → Template 1
+- Yes (permutations) → try all unused elements at each position → Template 2
+
+**Q2 — Can elements be reused?**
+- No → pass `i + 1` as next start → Template 1
+- Yes → pass `i` as next start (same element allowed again) → Template 3
+
+**Q3 — What is the pruning condition?**
+- This goes in your early `return` before the loop
+- Sum exceeds target → `if remaining < 0: return`
+- Invalid board state → `if not valid(board): return`
+
+---
+
+### Template 1 — Subsets (No reuse, order doesn't matter)
+
+```python
+def backtrack(start, current):
+    result.append(current[:])       # every state is valid — add it
+
+    for i in range(start, len(nums)):
+        current.append(nums[i])     # choose
+        backtrack(i + 1, current)   # recurse — i+1 means no reuse
+        current.pop()               # undo
+
+result = []
+backtrack(0, [])
+return result
+```
+
+**Example — all subsets of `[1,2,3]`:**
+```
+Q1: order doesn't matter → Template 1
+Q2: no reuse → i+1
+Q3: no pruning needed
+
+[] → add []
+include 1 → [1] → add [1]
+  include 2 → [1,2] → add [1,2]
+    include 3 → [1,2,3] → add [1,2,3]
+  undo 2, include 3 → [1,3] → add [1,3]
+undo 1, include 2 → [2] → ...
+```
+**Complexity:** O(2^n) time. O(n) space.
+
+---
+
+### Template 2 — Permutations (Order matters)
+
+```python
+def backtrack(current):
+    if len(current) == len(nums):
+        result.append(current[:])   # complete permutation
+        return
+
+    for num in nums:
+        if num in current:          # skip already used
+            continue
+        current.append(num)
+        backtrack(current)
+        current.pop()
+
+result = []
+backtrack([])
+return result
+```
+
+**Example — all permutations of `[1,2,3]`:**
+```
+Q1: order matters → Template 2
+Q2: no reuse — skip if already in current
+
+[1,2,3], [1,3,2], [2,1,3], [2,3,1], [3,1,2], [3,2,1] ✓
+```
+**Complexity:** O(n!) time. O(n) space.
+
+---
+
+### Template 3 — Combination Sum (Reuse allowed, pruning)
+
+```python
+def backtrack(start, current, remaining):
+    if remaining == 0:
+        result.append(current[:])   # valid combination found
+        return
+    if remaining < 0:
+        return                      # pruned — exceeded target
+
+    for i in range(start, len(candidates)):
+        current.append(candidates[i])
+        backtrack(i, current, remaining - candidates[i])  # i not i+1 — allows reuse
+        current.pop()
+
+result = []
+backtrack(0, [], target)
+return result
+```
+
+**Example — combinations summing to 7 from `[2,3,6,7]`:**
+```
+Q1: order doesn't matter → forward iteration
+Q2: reuse allowed → pass i not i+1
+Q3: prune when remaining < 0
+
+try 2 → rem=5 → try 2 → rem=3 → try 3 → rem=0 → add [2,2,3]
+try 7 → rem=0 → add [7]
+result: [[2,2,3],[7]] ✓
+```
+**Complexity:** O(2^n) worst case, pruning reduces in practice.
+
+---
+---
+
+# 10. Graphs
+
+### Mental Trigger
+> *"Is the data a network of connected nodes where I need to traverse connections or find paths?"*
+
+**Why this works:** DFS explores depth first — good for connectivity and components. BFS explores level by level — good for shortest paths. Both use a visited set to avoid revisiting.
+
+---
+
+### Translation Table
+
+| You hear this... | Pattern | Template |
+|---|---|---|
+| "connected components", "count islands" | DFS/BFS + visited | 1 |
+| "shortest path", "fewest steps" | BFS | 2 |
+| "can reach", "is path possible" | DFS/BFS | 1 or 2 |
+| "dependency order", "valid ordering" | Topological sort | 3 |
+| "spread", "infection", "multi-source" | Multi-source BFS | 2 variant |
+
+---
+
+### Questions to Ask Before Coding
+
+**Q1 — Do I need shortest path, or just reachability/components?**
+- Shortest path → BFS → Template 2
+- Reachability or count components → DFS → Template 1
+
+**Q2 — Is there a dependency ordering (A must come before B)?**
+- Yes → Topological sort → Template 3
+
+**Q3 — Is the graph a grid or an adjacency list?**
+- Grid → DFS with bounds checking → Template 1 grid variant
+- Adjacency list → standard DFS/BFS with visited set
+
+---
+
+### Template 1 — DFS (Components / Reachability)
+
+```python
+def dfs(node, visited):
+    visited.add(node)
+    for neighbor in graph[node]:
+        if neighbor not in visited:
+            dfs(neighbor, visited)
+
+visited = set()
+dfs(start, visited)
+```
+
+**Grid variant — count islands:**
+```python
+def dfs(r, c):
+    if r < 0 or r >= rows or c < 0 or c >= cols:
+        return
+    if grid[r][c] != '1':
+        return
+    grid[r][c] = '0'               # mark visited
+    dfs(r+1,c); dfs(r-1,c); dfs(r,c+1); dfs(r,c-1)
+
+count = 0
+for r in range(rows):
+    for c in range(cols):
+        if grid[r][c] == '1':
+            dfs(r, c)
+            count += 1
+return count
+```
+
+**Example — count islands in `[[1,1,0],[1,0,0],[0,0,1]]`:**
+```
+Q1: count components → DFS → Template 1
+Q3: grid → use bounds checking
+
+(0,0)=1 → DFS marks (0,0),(0,1),(1,0) → count=1
+(2,2)=1 → DFS marks (2,2) → count=2 ✓
+```
+**Complexity:** O(V+E) time. O(V) space.
+
+---
+
+### Template 2 — BFS (Shortest Path)
+
+```python
+from collections import deque
+
+queue = deque([start])
+visited = {start}
+distance = 0
+
+while queue:
+    for _ in range(len(queue)):     # process one full level
+        node = queue.popleft()
+        if node == target:
+            return distance
+        for neighbor in graph[node]:
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append(neighbor)
+    distance += 1
+
+return -1                           # not reachable
+```
+
+**Example — fewest steps from A to C:**
+```
+Q1: shortest path → BFS → Template 2
+
+queue=[A], distance=0
+pop A → add B,D → queue=[B,D], distance=1
+pop B → add C → queue=[D,C], distance=2
+pop C → target! → return 2 ✓
+```
+**Complexity:** O(V+E) time. O(V) space.
+
+---
+
+### Template 3 — Topological Sort
+
+```python
+from collections import deque
+
+in_degree = {node: 0 for node in graph}
+for node in graph:
+    for neighbor in graph[node]:
+        in_degree[neighbor] += 1
+
+queue = deque([n for n in in_degree if in_degree[n] == 0])
+order = []
+
+while queue:
+    node = queue.popleft()
+    order.append(node)
+    for neighbor in graph[node]:
+        in_degree[neighbor] -= 1
+        if in_degree[neighbor] == 0:
+            queue.append(neighbor)
+
+return order if len(order) == len(graph) else []  # empty = cycle
+```
+
+**Example — valid build order for A→C, B→C, C→D:**
+```
+Q2: dependency ordering → Template 3
+
+in_degree: A=0, B=0, C=2, D=1
+queue=[A,B]
+pop A → C in_degree→1
+pop B → C in_degree→0 → add C
+pop C → D in_degree→0 → add D
+pop D → order=[A,B,C,D] ✓
+```
+**Complexity:** O(V+E) time. O(V) space.
+
+---
+---
+
+# 11. Dynamic Programming
+
+### Mental Trigger
+> *"Am I solving the same subproblem multiple times — and can I build the answer from smaller answers I've already computed?"*
+
+**Why this works:** store answers to subproblems. Never recompute. Turns exponential recursion into polynomial DP.
+
+---
+
+### Translation Table
+
+| You hear this... | Sub-pattern | Template |
+|---|---|---|
+| "number of ways", "count paths", "climb stairs" | 1D DP | 1 |
+| "max/min value", "include or exclude each item" | 0/1 Knapsack | 2 |
+| "minimum coins", "items reusable" | Unbounded knapsack | 3 |
+| "two sequences", "edit distance", "LCS" | 2D DP | 4 |
+| "palindrome", "split string optimally" | 2D DP on string | 4 variant |
+
+---
+
+### Questions to Ask Before Coding
+
+**Q1 — What is the subproblem?**
+- This defines your dp array index
+- "ways to reach step i" → `dp[i]`
+- "max value with capacity w" → `dp[w]`
+- "edit distance for s1[:i] and s2[:j]" → `dp[i][j]`
+
+**Q2 — Can items/choices be reused?**
+- No reuse → iterate backwards over capacity → Template 2
+- Reuse allowed → iterate forwards → Template 3
+
+**Q3 — What are the base cases?**
+- Always set these first — they're the foundation everything builds on
+- `dp[0] = 0` (zero amount needs zero coins)
+- `dp[0][j] = j` (delete j chars to match empty string)
+
+---
+
+### Template 1 — 1D DP (Count Ways)
+
+```python
+dp = [0] * (n + 1)
+dp[0] = 1                           # Q3: base case
+dp[1] = 1
+
+for i in range(2, n + 1):
+    dp[i] = dp[i-1] + dp[i-2]      # Q1: subproblem depends on previous two
+
+return dp[n]
+```
+
+**Example — ways to climb n=5 stairs:**
+```
+Q1: dp[i] = ways to reach step i
+Q3: dp[0]=1, dp[1]=1
+
+dp[2]=2, dp[3]=3, dp[4]=5, dp[5]=8 ✓
+```
+**Complexity:** O(n) time. O(n) space (reducible to O(1)).
+
+---
+
+### Template 2 — 0/1 Knapsack (No reuse)
+
+```python
+dp = [0] * (capacity + 1)
+
+for weight, value in items:
+    for w in range(capacity, weight - 1, -1):   # Q2: backwards = no reuse
+        dp[w] = max(dp[w], dp[w - weight] + value)
+
+return dp[capacity]
+```
+
+**Example — max value with capacity=5, items=[(2,3),(3,4),(4,5)]:**
+```
+Q1: dp[w] = max value achievable with capacity w
+Q2: no reuse → iterate backwards
+Q3: dp[0]=0 (zero capacity, zero value)
+
+after (2,3): dp[5]=3
+after (3,4): dp[5]=max(3, dp[2]+4)=7
+return 7 ✓
+```
+**Complexity:** O(n * capacity) time. O(capacity) space.
+
+---
+
+### Template 3 — Unbounded Knapsack (Reuse allowed)
+
+```python
+dp = [float('inf')] * (amount + 1)
+dp[0] = 0                           # Q3: base case
+
+for coin in coins:
+    for w in range(coin, amount + 1):   # Q2: forwards = reuse allowed
+        dp[w] = min(dp[w], dp[w - coin] + 1)
+
+return dp[amount] if dp[amount] != float('inf') else -1
+```
+
+**Example — minimum coins for amount=6, coins=[1,2,5]:**
+```
+Q1: dp[w] = min coins to make amount w
+Q2: reuse allowed → iterate forwards
+Q3: dp[0]=0
+
+after coin 1: dp=[0,1,2,3,4,5,6]
+after coin 2: dp=[0,1,1,2,2,3,3]
+after coin 5: dp=[0,1,1,2,2,1,2]
+return dp[6]=2 ✓
+```
+**Complexity:** O(amount * coins) time. O(amount) space.
+
+---
+
+### Template 4 — 2D DP (Two Sequences)
+
+```python
+dp = [[0] * (len(s2) + 1) for _ in range(len(s1) + 1)]
+
+# Q3: base cases — usually first row/col
+for i in range(len(s1) + 1): dp[i][0] = i
+for j in range(len(s2) + 1): dp[0][j] = j
+
+for i in range(1, len(s1) + 1):
+    for j in range(1, len(s2) + 1):
+        if s1[i-1] == s2[j-1]:
+            dp[i][j] = dp[i-1][j-1]        # characters match
+        else:
+            dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])
+
+return dp[len(s1)][len(s2)]
+```
+
+**Example — edit distance between "cat" and "cut":**
+```
+Q1: dp[i][j] = edit distance for s1[:i] and s2[:j]
+Q3: dp[i][0]=i (delete i chars), dp[0][j]=j
+
+c vs c: match → dp[1][1]=0
+a vs u: no match → 1+min(dp[0][1],dp[1][0],dp[0][0])=1
+t vs t: match → dp[3][3]=1 ✓
+```
+**Complexity:** O(n*m) time. O(n*m) space.
+
+---
+---
+
+# 12. Greedy
+
+### Mental Trigger
+> *"Can I make the locally best choice at each step without reconsidering — and does that guarantee the global best?"*
+
+**Why this works:** greedy skips the need to explore all possibilities. It only works when local optimal choices don't conflict with global optimality — which you should verify before committing.
+
+---
+
+### Translation Table
+
+| You hear this... | Pattern | Template |
+|---|---|---|
+| "maximum meetings/events to attend" | Sort by end time, pick greedily | 1 |
+| "can you reach the end" | Track max reachable index | 2 |
+| "minimum platforms/resources needed" | Sort + count overlaps | 1 variant |
+| "assign jobs to minimize time" | Sort by duration | 1 variant |
+
+---
+
+### Questions to Ask Before Coding
+
+**Q1 — What is the locally optimal choice at each step?**
+- Earliest ending interval → maximizes future options → Template 1
+- Furthest reachable position → maximizes progress → Template 2
+
+**Q2 — Does making the local optimal choice ever hurt us globally?**
+- If yes → greedy won't work, need DP
+- If no → greedy is valid, proceed
+
+**Q3 — What do I sort by?**
+- End time → for scheduling/interval problems → Template 1
+- Start time → for resource counting problems
+- Value/weight ratio → for fractional knapsack
+
+---
+
+### Template 1 — Interval Scheduling (Max Non-overlapping)
+
+```python
+intervals.sort(key=lambda x: x[1])  # Q3: sort by end time
+count = 0
+last_end = float('-inf')
+
+for start, end in intervals:
+    if start >= last_end:            # no overlap with last picked
+        count += 1
+        last_end = end
+
+return count
+```
+
+**Example — max meetings from `[(1,3),(2,4),(3,5)]`:**
+```
+Q1: pick earliest ending → Template 1
+Q2: always valid — earliest end = most room left
+Q3: sort by end time
+
+(1,3): pick → last_end=3, count=1
+(2,4): 2<3 → skip
+(3,5): 3>=3 → pick → last_end=5, count=2
+return 2 ✓
+```
+**Complexity:** O(n log n) time. O(1) space.
+
+---
+
+### Template 2 — Jump Game (Max Reach)
+
+```python
+max_reach = 0
+
+for i in range(len(nums)):
+    if i > max_reach:
+        return False                # can't reach this position
+    max_reach = max(max_reach, i + nums[i])
+
+return True
+```
+
+**Example — can we reach end of `[2,3,1,1,4]`?**
+```
+Q1: extend max reach greedily → Template 2
+Q2: always valid — extending reach never hurts
+
+i=0: max_reach=2
+i=1: max_reach=4
+i=4: max_reach=8 → True ✓
+```
+**Complexity:** O(n) time. O(1) space.
+
+---
+---
+
+# 13. Intervals
+
+### Mental Trigger
+> *"Does the problem involve ranges with start and end points — and do I need to merge, check overlap, or count resources?"*
+
+**Why this works:** sorting by start time makes overlapping intervals adjacent. One linear scan after sorting handles most interval problems.
+
+---
+
+### Translation Table
+
+| You hear this... | Pattern | Template |
+|---|---|---|
+| "merge overlapping intervals" | Sort by start, merge | 1 |
+| "insert interval into sorted list" | Find overlap, merge neighbors | 1 variant |
+| "minimum rooms/workers needed" | Sort + min heap of end times | 2 |
+| "can attend all meetings" | Sort by start, check consecutive | 1 variant |
+| "find free time" | Merge events, find gaps | 1 variant |
+
+---
+
+### Questions to Ask Before Coding
+
+**Q1 — Am I merging intervals, or counting how many overlap at once?**
+- Merging → Template 1
+- Counting max concurrent (rooms/workers needed) → Template 2
+
+**Q2 — What does overlap mean here?**
+- Two intervals overlap if `start <= other_end`
+- Touch but don't overlap: `[1,3]` and `[3,5]` — check if problem treats these as overlapping
+
+**Q3 — Do I sort by start or end time?**
+- Merging/inserting → sort by start time → Template 1
+- Counting rooms → sort by start, heap tracks end times → Template 2
+
+---
+
+### Template 1 — Merge Intervals
+
+```python
+intervals.sort(key=lambda x: x[0])  # Q3: sort by start
+merged = [intervals[0]]
+
+for start, end in intervals[1:]:
+    if start <= merged[-1][1]:       # Q2: overlaps with last merged
+        merged[-1][1] = max(merged[-1][1], end)  # extend
+    else:
+        merged.append([start, end])  # no overlap — add new
+
+return merged
+```
+
+**Example — merge `[[1,3],[2,6],[8,10]]`:**
+```
+Q1: merging → Template 1
+Q2: overlap if start <= prev end
+Q3: sort by start
+
+[1,3] → start
+[2,6]: 2<=3 → merge → [1,6]
+[8,10]: 8>6 → add → [[1,6],[8,10]] ✓
+```
+**Complexity:** O(n log n) time. O(n) space.
+
+---
+
+### Template 2 — Minimum Meeting Rooms
+
+```python
+import heapq
+
+intervals.sort(key=lambda x: x[0])  # Q3: sort by start
+heap = []                            # tracks end times of active meetings
+
+for start, end in intervals:
+    if heap and heap[0] <= start:    # earliest-ending room is free
+        heapq.heapreplace(heap, end) # reuse it
+    else:
+        heapq.heappush(heap, end)    # need new room
+
+return len(heap)                     # rooms = peak concurrent meetings
+```
+
+**Example — minimum rooms for `[[1,4],[2,5],[7,9]]`:**
+```
+Q1: count max concurrent → Template 2
+Q3: sort by start, heap tracks end times
+
+[1,4]: push → heap=[4]
+[2,5]: 2<4 → new room → heap=[4,5]
+[7,9]: 7>4 → reuse → heap=[5,9]
+return 2 ✓
+```
+**Complexity:** O(n log n) time. O(n) space.
+
+---
+---
+
+# 14. Bit Manipulation
+
+### Mental Trigger
+> *"Can I solve this using binary representations — XOR, AND, OR, or shifts?"*
+
+**Why this works:** bit operations run in O(1) and operate on all 32 bits simultaneously. Faster and more space-efficient than alternatives for parity, flags, and unique element problems.
+
+---
+
+### Translation Table
+
+| You hear this... | Pattern | Template |
+|---|---|---|
+| "find the one unique number, all others appear twice" | XOR all | 1 |
+| "count how many bits are set" | n & (n-1) loop | 2 |
+| "set/check/remove a permission or flag" | Bit masking | 3 |
+| "check if power of 2" | n & (n-1) == 0 | 3 |
+| "multiply/divide by 2" | Left/right shift | 3 |
+
+---
+
+### Questions to Ask Before Coding
+
+**Q1 — Are pairs of identical values cancelling out to leave a unique value?**
+- Yes → XOR → Template 1
+- No → continue to Q2
+
+**Q2 — Am I counting, setting, checking, or clearing individual bits?**
+- Counting set bits → Template 2
+- Set/check/clear a specific bit → Template 3
+
+**Q3 — Do I know which bit position I'm targeting?**
+- Yes → use `1 << k` as a mask → Template 3
+- No → loop through all bits or use `n & (n-1)` → Template 2
+
+---
+
+### Template 1 — XOR (Find Unique Element)
+
+```python
+result = 0
+for num in nums:
+    result ^= num               # pairs cancel (x^x=0), unique survives
+return result
+```
+
+**Example — find unique in `[2,3,2,4,4]`:**
+```
+Q1: pairs cancel → XOR → Template 1
+
+0^2=2, 2^3=1, 1^2=3, 3^4=7, 7^4=3 ✓
+```
+**Complexity:** O(n) time. O(1) space.
+
+---
+
+### Template 2 — Count Set Bits
+
+```python
+count = 0
+while n:
+    n &= (n - 1)                # clears lowest set bit each time
+    count += 1
+return count
+```
+
+**Example — count set bits in 13 (binary: 1101):**
+```
+Q2: counting set bits → Template 2
+
+1101 & 1100 = 1100 → count=1
+1100 & 1011 = 1000 → count=2
+1000 & 0111 = 0000 → count=3 ✓
+```
+**Complexity:** O(k) where k = number of set bits. O(1) space.
+
+---
+
+### Template 3 — Bit Masking
+
+```python
+# set bit k
+flags |= (1 << k)
+
+# check bit k — is it on?
+is_set = (flags >> k) & 1
+
+# clear bit k
+flags &= ~(1 << k)
+
+# check if power of 2 — exactly one bit set
+is_power_of_2 = n > 0 and (n & (n - 1)) == 0
+```
+
+**Example — set permission 2, check it, then remove it:**
+```
+Q2: set/check/clear → Template 3
+Q3: target bit k=2
+
+set:    flags |= (1<<2) → flags=4  (100)
+check:  (4>>2) & 1 = 1  ✓ (set)
+clear:  flags &= ~(1<<2) → flags=0
+```
+**Complexity:** O(1) for all operations.
+
+---
+---
+
+# Python Mechanics
+
+Things to know cold. These come up in almost every problem.
+
+---
+
+### Dict and Counter
+
+```python
+freq = {'a': 3, 'b': 1}
+for k, v in freq.items():     # k=key, v=value
+    print(k, v)
+for k in freq:                # keys only — common mistake
+
+sorted(freq.items(), key=lambda x: x[1], reverse=True)   # descending
+sorted(freq.items(), key=lambda x: x[1], reverse=False)  # ascending
+
+from collections import Counter
+freq = Counter("aabbcc")      # {'a':2,'b':2,'c':2}
+freq = Counter([1,2,2,3])     # {2:2,1:1,3:1}
+
+('a', 3)    # tuple — what sorted() gives back
+{'a': 3}    # dict — what Counter/freq looks like
+print(type(x))
+```
+
+---
+
+### Deque
+
+```python
+from collections import deque
+q = deque([1, 2, 3])
+q.append(4)          # add right — O(1)
+q.appendleft(0)      # add left — O(1)
+q.pop()              # remove right — O(1)
+q.popleft()          # remove left — O(1) ← use for BFS, not list.pop(0)
+```
+
+---
+
+### Heap
+
+```python
+import heapq
+heap = []
+heapq.heappush(heap, 3)
+heapq.heappop(heap)          # always returns min
+
+# max heap — negate values
+heapq.heappush(heap, -5)
+-heapq.heappop(heap)         # returns 5
+
+arr = [3,1,4,1,5]
+heapq.heapify(arr)           # O(n)
+```
+
+---
+
+### Useful Built-ins
+
+```python
+for i, x in enumerate(arr):    # index + value
+    print(i, x)
+
+for a, b in zip(list1, list2): # pair two lists
+    print(a, b)
+
+arr.sort(key=lambda x: x[1])
+sorted(arr, key=lambda x: -x[1])
+
+s.split()
+' '.join(words)
+s[::-1]
+ord('a')    # 97
+chr(97)     # 'a'
+```
+
+---
+---
+
+# Space & Time Tradeoffs
+
+> At Google and Meta, stating complexity is not enough. Reason about *why* the tradeoff is worth it.
+
+---
+
+### How to Articulate It
+
+Don't say: *"This is O(n) time and O(n) space."*
+
+Say: *"I'm using a hash map — O(n) extra space — but it eliminates the inner loop and brings time from O(n²) to O(n). Given memory isn't constrained here, that's the right tradeoff."*
+
+Three parts:
+1. What extra space you're using
+2. What time improvement it buys
+3. Why that tradeoff is justified
+
+---
+
+### When Space IS Constrained
+
+| Normally | Space-constrained alternative |
+|---|---|
+| Hash set for duplicates | Sort first, check adjacent elements |
+| Prefix sum array | Recompute ranges with O(1) space |
+| Memoization table | Bottom-up DP with rolling array |
+
+---
+---
+
+# Complexity Cheat Sheet
+
+| Operation | Time |
+|---|---|
+| Hash map / set lookup, insert, delete | O(1) avg |
+| Array access by index | O(1) |
+| Array search (unsorted) | O(n) |
+| Binary search | O(log n) |
+| Sorting | O(n log n) |
+| Single loop | O(n) |
+| Nested loops | O(n²) |
+| DFS / BFS on graph | O(V + E) |
+| Heap push / pop | O(log n) |
+| Heap build from array | O(n) |
+| DP (most problems) | O(n²) |
+| Backtracking (worst case) | O(2^n) or O(n!) |
+
+---
+
+| Structure | Access | Search | Insert | Delete |
+|---|---|---|---|---|
+| Array | O(1) | O(n) | O(n) | O(n) |
+| Hash map | O(1) | O(1) | O(1) | O(1) |
+| Stack / Queue | O(n) | O(n) | O(1) | O(1) |
+| Binary search tree | O(log n) | O(log n) | O(log n) | O(log n) |
+| Heap | O(1) min/max | O(n) | O(log n) | O(log n) |
+| Linked list | O(n) | O(n) | O(1) | O(1) |
