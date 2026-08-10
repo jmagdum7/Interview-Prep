@@ -40,222 +40,177 @@
 # 1. Arrays & Hashing
 
 ### Mental Trigger
-> *"What am I repeatedly looking up? Store that."*
+> *"What am I repeatedly looking up? Store it so each lookup is O(1) instead of O(n)."*
 
-```
-Input:    [2, 7, 11, 15], target=9
-Question: Do any two numbers sum to the target?
-Output:   [0, 1] → (2 + 7 = 9)
-
-Brute force:
-- For 2 → scan [7,11,15] for 7 → found (2 loops)
-- For 7 → scan [11,15] for 2 → already passed
-- O(n²)
-
-Hash map:
-- For 2 → need 7 → not in map → store {2:0}
-- For 7 → need 2 → 2 IS in map → return [0,1]
-- O(n)
-```
-
-**Why this works:** instead of scanning for the pair, you store what you've seen and look it up instantly.
+**Why this works:** scanning an array for something is O(n). Looking it up in a hash map or set is O(1). Every A&H problem trades O(n) space to eliminate a repeated scan.
 
 ---
 
-### When You'll See This In Interviews
+### Questions to Ask Before Coding
 
-**Example 1 — User deduplication**
-*"We have millions of user signups. Some users signed up multiple times with the same email. Flag the duplicates."*
+**Q1 — Do I need existence only, or do I need to store something with each element?**
+- Existence only → `set`
+- Need index, count, or group → `dict`
 
-```
-Input:    [a@x.com, b@x.com, a@x.com]
-Question: Which emails appear more than once?
-Output:   a@x.com
+**Q2 — What is the key? What is the value?**
+- This fills your `seen[key] = value` directly
+- element → index (two sum)
+- element → count (frequency)
+- sorted signature → list of words (grouping)
 
-- add a@x.com → seen={a@x.com}
-- add b@x.com → seen={a@x.com, b@x.com}
-- add a@x.com → already in seen! → duplicate found
-```
-
-→ Hash set. Store as you scan. If already there — duplicate.
-
----
-
-**Example 2 — Analytics grouping**
-*"Group all search queries that are rearrangements of the same letters."*
-
-```
-Input:    ["eat", "tea", "tan", "ate", "nat", "bat"]
-Question: Which words are anagrams of each other?
-Output:   [["eat","tea","ate"], ["tan","nat"], ["bat"]]
-
-- "eat" → sorted → "aet" → groups={"aet": ["eat"]}
-- "tea" → sorted → "aet" → groups={"aet": ["eat","tea"]}
-- "tan" → sorted → "ant" → groups={"aet": [...], "ant": ["tan"]}
-- "ate" → sorted → "aet" → groups={"aet": ["eat","tea","ate"]}
-- "nat" → sorted → "ant" → groups={"ant": ["tan","nat"]}
-- "bat" → sorted → "abt" → groups={"abt": ["bat"]}
-```
-
-→ Frequency map. Same sorted signature = same group.
-
----
-
-**Example 3 — Running metrics**
-*"Our dashboard needs to show the sum of any time range instantly."*
-
-```
-Input:    [1, 2, 3, 4], query: sum from index 1 to 2
-Question: What is the sum between any two indices in O(1)?
-Output:   5 (2+3)
-
-prefix = [0, 1, 3, 6, 10]
-sum(1,2) = prefix[3] - prefix[1] = 6 - 1 = 5
-```
-
-→ Prefix sum. Precompute once, answer any range in O(1).
+**Q3 — One pass or two?**
+- Check and store simultaneously → one pass (complement trick)
+- Build full map first, then query → two pass (frequency comparison)
 
 ---
 
 ### Translation Table
 
-| You hear this... | Pattern | Why |
-|---|---|---|
-| "duplicate", "seen before", "already exists" | Hash set | O(1) existence check |
-| "two things that sum/multiply to target" | Complement map | Store what you've seen, check for the missing piece |
-| "count", "frequency", "how many times" | Frequency map | Count as you scan |
-| "group by shared property", "anagram" | Map of lists | Same key = same group |
-| "sum of range", "subarray sum" | Prefix sum | Precompute once, query in O(1) |
-| "top K frequent" | Frequency map + bucket sort | Count then retrieve by rank |
+| You hear this... | Key | Value | Structure | Template |
+|---|---|---|---|---|
+| "duplicate", "seen before" | element | — | set | 1 |
+| "two things sum to target" | element | index | dict | 2 |
+| "count", "frequency" | element | count | dict | 3 |
+| "group by property", "anagram" | signature | list | dict of lists | 3 |
+| "subarray sum", "range sum" | index | running total | array | 4 |
+| "top K frequent" | element | count | dict + bucket | 5 |
 
 ---
 
 ### Template 1 — Hash Set
 
-```
-Input:    [1, 2, 3, 1]
-Question: Does any value appear more than once?
-Output:   True
-```
-
 ```python
 seen = set()
+
 for x in arr:
-    if x in seen:      # O(1) — already saw this, act on it
-        return True
-    seen.add(x)        # first time — store for future checks
-return False
+    if x in seen:      # element already exists — act on it
+        ...
+    seen.add(x)        # first time — store for future lookups
+
+return ...
 ```
 
+**Example — does any value appear more than once?**
 ```
-- add 1 → seen={1}
-- add 2 → seen={1,2}
-- add 3 → seen={1,2,3}
-- add 1 → already in seen! → return True ✓
+Q1: existence only → set
+Q2: key = element, no value needed
+Q3: one pass — check and store simultaneously
+
+[1,2,3,1]:
+1 → not seen → store
+2 → not seen → store
+3 → not seen → store
+1 → IN seen → return True ✓
 ```
+**Complexity:** O(n) time. O(n) space.
 
 ---
 
-### Template 2 — Frequency Map
+### Template 2 — Complement Map
 
+```python
+seen = {}                      # key: element, value: index
+
+for i, x in enumerate(arr):
+    complement = target - x    # what I need to complete the pair
+    if complement in seen:
+        return [seen[complement], i]
+    seen[x] = i                # store for future lookups
 ```
-Input:    "anagram", "nagaram"
-Question: Are these two strings anagrams?
-Output:   True
+
+**Example — which two indices sum to target=9?**
 ```
+Q1: need index alongside element → dict
+Q2: key = element, value = index
+Q3: one pass — check complement, then store
+
+[2,7,11,15], target=9:
+x=2 → need 7 → not seen → store {2:0}
+x=7 → need 2 → IN seen → return [0,1] ✓
+```
+**Complexity:** O(n) time. O(n) space.
+
+---
+
+### Template 3 — Frequency Map
 
 ```python
 freq = {}
+
 for x in arr:
-    freq[x] = freq.get(x, 0) + 1
+    freq[x] = freq.get(x, 0) + 1  # get current count (default 0), increment
 ```
 
+**Example — are these two strings anagrams?**
 ```
-count "anagram" → {a:3, n:1, g:1, r:1, m:1}
-count "nagaram" → {n:1, a:3, g:1, r:1, m:1}
+Q1: need counts → dict
+Q2: key = character, value = count
+Q3: two pass — build freq for each, then compare
+
+"anagram" → {'a':3,'n':1,'g':1,'r':1,'m':1}
+"nagaram" → {'n':1,'a':3,'g':1,'r':1,'m':1}
 equal → True ✓
 ```
-
----
-
-### Template 3 — Complement Map
-
-```
-Input:    [2, 7, 11, 15], target=9
-Question: Which two indices sum to the target?
-Output:   [0, 1]
-```
-
-```python
-seen = {}
-for i, x in enumerate(arr):
-    complement = target - x
-    if complement in seen:
-        return [seen[complement], i]
-    seen[x] = i
-```
-
-```
-- x=2 → need 7 → not in map → store {2:0}
-- x=7 → need 2 → 2 IN map → return [0,1] ✓
-```
+**Complexity:** O(n) time. O(k) space where k = unique elements.
 
 ---
 
 ### Template 4 — Prefix Sums
 
-```
-Input:    [1, 2, 3, 4], query: sum index 1 to 2
-Question: What is the range sum in O(1)?
-Output:   5
-```
-
 ```python
-prefix = [0] * (len(arr) + 1)
+prefix = [0] * (len(arr) + 1)          # prefix[0]=0 is the base case
+
 for i in range(len(arr)):
-    prefix[i+1] = prefix[i] + arr[i]
+    prefix[i+1] = prefix[i] + arr[i]   # running total up to index i
 
-range_sum = prefix[j+1] - prefix[i]
+# query: sum from index i to j
+range_sum = prefix[j+1] - prefix[i]    # subtract what came before i
 ```
 
+**Example — sum of elements from index 1 to 2:**
 ```
-prefix = [0, 1, 3, 6, 10]
-prefix[3] - prefix[1] = 6 - 1 = 5 ✓
+Q1: need cumulative totals → array
+Q2: key = index, value = running sum
+Q3: two pass — build prefix array, then answer queries
+
+[1,2,3,4]:
+prefix = [0,1,3,6,10]
+sum(1,2) = prefix[3] - prefix[1] = 6-1 = 5 ✓
 ```
+**Complexity:** O(n) build. O(1) per query. O(n) space.
 
 ---
 
 ### Template 5 — Bucket Sort (Top K Frequent)
 
-```
-Input:    [1,1,1,2,2,3], k=2
-Question: What are the top 2 most frequent elements?
-Output:   [1, 2]
-```
-
 ```python
 freq = {}
 for n in nums:
-    freq[n] = freq.get(n, 0) + 1
+    freq[n] = freq.get(n, 0) + 1           # build frequency map
 
-bucket = [[] for _ in range(len(nums) + 1)]
+bucket = [[] for _ in range(len(nums) + 1)]  # index = frequency
 for num, count in freq.items():
-    bucket[count].append(num)
+    bucket[count].append(num)               # place at frequency index
 
 result = []
-for i in range(len(bucket) - 1, 0, -1):
+for i in range(len(bucket) - 1, 0, -1):    # right to left = most frequent first
     result.extend(bucket[i])
     if len(result) >= k:
         return result[:k]
 ```
 
+**Example — top 2 most frequent elements:**
 ```
-freq = {1:3, 2:2, 3:1}
-bucket[3]=[1], bucket[2]=[2], bucket[1]=[3]
-scan right to left → result=[1,2] → len=2=k → return [1,2] ✓
-```
+Q1: need counts, then rank → dict + bucket
+Q2: key = element, value = count
+Q3: two pass — build freq map, then place into buckets
 
-**Complexity:** O(n) time, O(n) space
+[1,1,1,2,2,3], k=2:
+freq={1:3, 2:2, 3:1}
+bucket[3]=[1], bucket[2]=[2], bucket[1]=[3]
+scan right → result=[1,2] → len=2=k → return [1,2] ✓
+```
+**Complexity:** O(n) time. O(n) space.
 
 ---
 ---
@@ -263,186 +218,154 @@ scan right to left → result=[1,2] → len=2=k → return [1,2] ✓
 # 2. Two Pointers
 
 ### Mental Trigger
-> *"Can I avoid a nested loop by using two positions that move toward each other or at different speeds?"*
+> *"Can I eliminate candidates by maintaining two positions that move toward each other or at different speeds?"*
 
-```
-Input:    [1, 3, 6, 8, 11], target=9
-Question: Do any two numbers sum to the target?
-Output:   [0, 3] → (1 + 8 = 9)
-
-Brute force:
-- Try every pair → O(n²)
-
-Two pointers:
-- left=1, right=11 → sum=12 > 9 → move right left
-- left=1, right=8  → sum=9 == 9 → found
-- O(n)
-```
-
-**Why this works:** sorted array means moving pointers inward eliminates candidates without checking every pair.
+**Why this works:** instead of checking every pair with a nested loop O(n²), two pointers move inward and eliminate entire ranges of candidates in one pass O(n). Requires sorted input or a naturally ordered structure.
 
 ---
 
-### When You'll See This In Interviews
+### Questions to Ask Before Coding
 
-**Example 1 — Palindrome check**
-*"Check if a string reads the same forwards and backwards, ignoring spaces."*
+**Q1 — Is the input sorted, or can I sort it without breaking the problem?**
+- Yes → two pointers inward is valid (Template 1, Template 3)
+- No, and order matters → same direction slow/fast pointers (Template 2)
 
-```
-Input:    "racecar"
-Question: Is this a palindrome?
-Output:   True
+**Q2 — Do the pointers move toward each other, or in the same direction?**
+- Toward each other → comparing elements from both ends (sum, palindrome, water)
+- Same direction → one reads, one writes (in-place removal)
 
-- left=r, right=r → match → move inward
-- left=a, right=a → match → move inward
-- left=c, right=c → match → move inward
-- left=e → middle → done → True
-```
-
-→ Two pointers from both ends. Compare moving inward.
-
----
-
-**Example 2 — Container with most water**
-*"Given heights of walls, find two walls that hold the most water."*
-
-```
-Input:    [1, 8, 6, 2, 5, 4, 8, 3, 7]
-Question: What is the maximum water between any two walls?
-Output:   49
-
-- left=1, right=7 → area=min(1,7)*8=8 → move left (shorter wall)
-- left=8, right=7 → area=min(8,7)*7=49 → move right
-- ...continue until pointers meet
-```
-
-→ Always move the shorter wall inward — moving the taller one can only decrease area.
-
----
-
-**Example 3 — Remove duplicates in-place**
-*"Remove all instances of a value from an array without extra memory."*
-
-```
-Input:    [1, 2, 2, 3], remove 2
-Question: Remove target value in-place, return new length
-Output:   [1, 3], length=2
-
-- read=0(1): keep → write=0→1, write moves to 1
-- read=1(2): skip
-- read=2(2): skip
-- read=3(3): keep → write=1→3, write moves to 2
-result: [1,3,...], length=2
-```
-
-→ Slow/fast pointer. One reads, one writes.
+**Q3 — What is the move condition?**
+- This fills your `if/elif/else` inside the loop
+- Sum too small → move left up
+- Sum too big → move right down
+- Element invalid → skip read, don't advance write
 
 ---
 
 ### Translation Table
 
-| You hear this... | Pattern | Why |
-|---|---|---|
-| "sorted array", "two numbers sum to target" | Two pointers inward | Eliminate candidates by moving inward |
-| "palindrome", "reads same forwards/backwards" | Two pointers from ends | Compare from outside in |
-| "in-place removal", "no extra memory" | Slow/fast pointer | One reads, one writes |
-| "container with most water", "maximize area" | Two pointers inward | Move the limiting side |
-| "three numbers sum to target" | Sort + two pointers inside loop | Fix one, use two pointers for the rest |
+| You hear this... | Precondition | Pointer movement | Template |
+|---|---|---|---|
+| "two numbers sum to target" | sorted | toward each other | 1 |
+| "palindrome", "same forwards/backwards" | any | toward each other from ends | 1 |
+| "maximize area", "container with water" | any | move shorter side inward | 1 |
+| "in-place removal", "no extra memory" | any | same direction, read/write | 2 |
+| "three numbers sum to target" | sort first | fix one, two pointers inside | 3 |
 
 ---
 
 ### Template 1 — Two Pointers Inward
 
-```
-Input:    [1, 3, 6, 8, 11], target=9
-Question: Which two indices sum to the target?
-Output:   [0, 3]
-```
-
 ```python
 left, right = 0, len(arr) - 1
+
 while left < right:
-    current_sum = arr[left] + arr[right]
-    if current_sum == target:
-        return [left, right]
-    elif current_sum < target:
-        left += 1
+    # compute something using arr[left] and arr[right]
+
+    if <found condition>:
+        return ...
+    elif <need larger value>:
+        left += 1              # move left up to increase
     else:
-        right -= 1
+        right -= 1             # move right down to decrease
 ```
 
+**Example — which two indices sum to target=9?**
 ```
-- left=1, right=11 → sum=12 > 9 → right--
-- left=1, right=8  → sum=9 == 9 → return [0,3] ✓
+Q1: sorted input → valid
+Q2: toward each other — comparing from both ends
+Q3: sum < target → left up | sum > target → right down
+
+[1,3,6,8,11], target=9:
+left=1, right=11 → sum=12 > 9 → right--
+left=1, right=8  → sum=9 == 9 → return [0,3] ✓
 ```
+**Complexity:** O(n) time. O(1) space.
 
 ---
 
-### Template 2 — In-place Write
-
-```
-Input:    [1, 2, 2, 3], val=2
-Question: Remove all 2s in-place, return new length
-Output:   2, array=[1,3]
-```
+### Template 2 — Slow/Fast (In-place Write)
 
 ```python
-write = 0
+write = 0                          # write pointer — next valid position
+
 for read in range(len(arr)):
-    if arr[read] != val:
+    if <element should be kept>:   # read pointer scans everything
         arr[write] = arr[read]
-        write += 1
-return write
+        write += 1                 # only advance write when keeping
+
+return write                       # new length
 ```
 
+**Example — remove all 2s in-place:**
 ```
-- read=0(1): keep → arr[0]=1, write=1
-- read=1(2): skip
-- read=2(2): skip
-- read=3(3): keep → arr[1]=3, write=2
+Q1: order matters, no sort → same direction
+Q2: same direction — read scans, write places
+Q3: arr[read] != val → keep it
+
+[1,2,2,3], val=2:
+read=0(1): keep → arr[0]=1, write=1
+read=1(2): skip
+read=2(2): skip
+read=3(3): keep → arr[1]=3, write=2
 result: [1,3,...], length=2 ✓
 ```
+**Complexity:** O(n) time. O(1) space.
 
 ---
 
 ### Template 3 — Three Sum
 
-```
-Input:    [-1, 0, 1, 2, -1, -4]
-Question: Find all unique triplets that sum to zero
-Output:   [[-1,-1,2], [-1,0,1]]
-```
-
 ```python
-arr.sort()
+arr.sort()                     # sort first — enables two pointers
 result = []
+
 for i in range(len(arr) - 2):
-    if i > 0 and arr[i] == arr[i-1]:
+    # skip duplicate values for the fixed element
+    is_duplicate = i > 0 and arr[i] == arr[i - 1]
+    if is_duplicate:
         continue
-    left, right = i + 1, len(arr) - 1
+
+    left = i + 1               # left pointer starts just after fixed element
+    right = len(arr) - 1       # right pointer starts at end
+
     while left < right:
         total = arr[i] + arr[left] + arr[right]
+
         if total == 0:
             result.append([arr[i], arr[left], arr[right]])
-            while left < right and arr[left] == arr[left+1]: left += 1
-            while left < right and arr[right] == arr[right-1]: right -= 1
+
+            # skip duplicates on both sides before moving inward
+            while left < right and arr[left] == arr[left + 1]:
+                left += 1
+            while left < right and arr[right] == arr[right - 1]:
+                right -= 1
+
             left += 1
             right -= 1
+
         elif total < 0:
-            left += 1
+            left += 1          # sum too small — increase left
         else:
-            right -= 1
+            right -= 1         # sum too big — decrease right
+
 return result
 ```
 
+**Example — find all triplets summing to zero:**
 ```
-sorted: [-4,-1,-1,0,1,2]
-fix -4 → left=-1, right=2 → sum=-3 < 0 → left++
-fix -1 → left=-1, right=2 → sum=0 → found [-1,-1,2]
-fix -1 → left=0, right=1 → sum=0 → found [-1,0,1]
-```
+Q1: sort first → valid
+Q2: fix one element, two pointers for the rest
+Q3: total < 0 → left up | total > 0 → right down
 
-**Complexity:** O(n²) time, O(1) space
+[-1,0,1,2,-1,-4] → sorted: [-4,-1,-1,0,1,2]
+fix -4: left=-1, right=2 → sum=-3 < 0 → left++
+fix -1: left=-1, right=2 → sum=0 → found [-1,-1,2]
+        left=0,  right=1 → sum=0 → found [-1,0,1]
+fix  0: left=1,  right=2 → sum=3 > 0 → right--
+done → [[-1,-1,2],[-1,0,1]] ✓
+```
+**Complexity:** O(n²) time. O(1) space excluding output.
 
 ---
 ---
@@ -450,164 +373,124 @@ fix -1 → left=0, right=1 → sum=0 → found [-1,0,1]
 # 3. Sliding Window
 
 ### Mental Trigger
-> *"Am I looking for a subarray or substring that satisfies a condition — and can I avoid recomputing everything when the window shifts?"*
+> *"Am I looking for a subarray or substring satisfying a condition — and can I avoid recomputing from scratch when the window shifts?"*
 
-```
-Input:    [2, 1, 5, 1, 3, 2], k=3
-Question: What is the largest sum of any 3 consecutive elements?
-Output:   9
-
-Brute force:
-- [2,1,5] = 8
-- [1,5,1] = 7
-- [5,1,3] = 9
-- Recalculates every window from scratch
-
-Sliding window:
-- window=[2,1,5] → sum=8
-- drop 2, add 1 → window=[1,5,1] → sum=7
-- drop 1, add 3 → window=[5,1,3] → sum=9
-- Adjusts by one element each step
-```
-
-**Why this works:** you're not recomputing. You're adjusting.
+**Why this works:** instead of recomputing the entire window each step, you adjust — add one element on the right, remove one on the left. O(n) instead of O(n²).
 
 ---
 
-### When You'll See This In Interviews
+### Questions to Ask Before Coding
 
-**Example 1 — Network monitoring**
-*"Given bandwidth readings per second, find the maximum total bandwidth used in any 5-second window."*
+**Q1 — Fixed or variable window size?**
+- Size given (e.g. k=3) → **Template 1**
+- Find min/max length satisfying a condition → **Template 2**
 
-```
-Input:    [3, 1, 4, 1, 5, 9, 2, 6], k=5
-Question: What is the highest total bandwidth in any 5-second window?
-Output:   23
+**Q2 — What makes the window invalid?**
+- This is your `while` shrink condition in Template 2
+- "no duplicates" → `while arr[right] in state`
+- "sum exceeds limit" → `while current_sum > limit`
 
-- window=[3,1,4,1,5] → sum=14
-- drop 3, add 9 → window=[1,4,1,5,9] → sum=20
-- drop 1, add 2 → window=[4,1,5,9,2] → sum=21
-- drop 4, add 6 → window=[1,5,9,2,6] → sum=23
-```
-
-→ Fixed window. Add right, remove left, track maximum.
-
----
-
-**Example 2 — Fraud detection**
-*"Find the longest sequence of transactions where no amount repeats."*
-
-```
-Input:    [100, 200, 300, 100, 400]
-Question: What is the longest sequence with no repeating amount?
-Output:   4 → [200, 300, 100, 400]
-
-- add 100 → window=[100]
-- add 200 → window=[100,200]
-- add 300 → window=[100,200,300]
-- add 100 → duplicate! shrink left until removed → window=[200,300,100]
-- add 400 → window=[200,300,100,400] → length=4
-```
-
-→ Variable window. Expand right, shrink left when constraint breaks.
-
----
-
-**Example 3 — Ad targeting**
-*"Find the shortest sequence of user actions that contains all required action types."*
-
-```
-Input:    actions=[A,B,C,A,B], required={A,B,C}
-Question: What is the shortest sequence containing all of A, B, C?
-Output:   3 → [A,B,C]
-
-- add A → window=[A] → missing {B,C}
-- add B → window=[A,B] → missing {C}
-- add C → window=[A,B,C] → all covered → length=3
-- shrink left → window=[B,C] → missing {A} → stop
-```
-
-→ Variable window with counter. Expand to satisfy, shrink to minimize.
+**Q3 — What state do I track inside the window?**
+- Running total → plain variable
+- Membership → `set`
+- Frequency → `dict`
 
 ---
 
 ### Translation Table
 
-| You hear this... | Pattern | Why |
-|---|---|---|
-| "fixed size window", "k consecutive elements" | Fixed sliding window | Add right, remove left, track result |
-| "longest subarray/substring with condition" | Variable window expand/shrink | Expand until violated, shrink to fix |
-| "shortest subarray containing all of X" | Variable window with counter | Track how many conditions satisfied |
-| "no repeating elements in window" | Variable window with set | Set tracks current window contents |
-| "anagram in string", "permutation in string" | Fixed window with freq map | Compare frequency maps as you slide |
+| You hear this... | Variant | State | Template |
+|---|---|---|---|
+| "k consecutive elements", "fixed size" | Fixed | variable | 1 |
+| "longest subarray/substring with condition" | Variable | set or dict | 2 |
+| "shortest subarray containing all of X" | Variable | dict counter | 2 |
+| "no repeating elements" | Variable | set | 2 |
+| "anagram in string", "permutation in string" | Fixed | dict | 1 |
 
 ---
 
-### Template 1 — Fixed Size Window
-
-```
-Input:    [2, 1, 5, 1, 3, 2], k=3
-Question: What is the largest sum of any 3 consecutive elements?
-Output:   9
-```
+### Template 1 — Fixed Window
 
 ```python
-window_sum = sum(arr[:k])
-max_sum = window_sum
+state = ...                            # Q3: initialise window state for first k elements
+result = state
 
+for i in range(k, len(arr)):
+    # add incoming right element: arr[i]
+    # remove outgoing left element: arr[i - k]
+    # update result
+
+return result
+```
+
+**Example — max sum of k=3 consecutive elements:**
+```
+Q1: k=3 given → fixed → Template 1
+Q2: no invalidity — just slide
+Q3: tracking a sum → plain variable
+
+[2,1,5,1,3,2]:
+[2,1,5]=8 → [1,5,1]=7 → [5,1,3]=9 → [1,3,2]=6
+max=9 ✓
+```
+```python
+window_sum = sum(arr[:k])
+result = window_sum
 for i in range(k, len(arr)):
     window_sum += arr[i]
     window_sum -= arr[i - k]
-    max_sum = max(max_sum, window_sum)
-
-return max_sum
+    result = max(result, window_sum)
+return result
 ```
-
-```
-- window=[2,1,5] → sum=8
-- drop 2, add 1 → window=[1,5,1] → sum=7
-- drop 1, add 3 → window=[5,1,3] → sum=9
-- drop 5, add 2 → window=[1,3,2] → sum=6
-max=9 ✓
-```
-
-**Complexity:** O(n) time, O(1) space
+**Complexity:** O(n) time. O(1) space.
 
 ---
 
 ### Template 2 — Variable Window
 
-```
-Input:    "abcac"
-Question: What is the longest substring with no repeating characters?
-Output:   3 → "abc"
+```python
+left = 0
+state = ...                            # Q3: set, dict, or variable
+
+for right in range(len(arr)):
+    # expand: add arr[right] to state
+
+    while <window is invalid>:         # Q2: your shrink condition
+        # shrink: remove arr[left] from state
+        left += 1
+
+    # update result using (right - left + 1)
+
+return result
 ```
 
+**Example — longest substring with no repeating characters:**
+```
+Q1: find longest → variable → Template 2
+Q2: invalid when duplicate → while s[right] in seen
+Q3: membership → set
+
+"abcac":
+a → {a}, len=1
+b → {a,b}, len=2
+c → {a,b,c}, len=3
+a → duplicate, shrink → {b,c,a}, len=3
+c → duplicate, shrink → {a,c}, len=2
+max=3 ✓
+```
 ```python
 left = 0
 seen = set()
-max_len = 0
-
+result = 0
 for right in range(len(s)):
     while s[right] in seen:
         seen.remove(s[left])
         left += 1
     seen.add(s[right])
-    max_len = max(max_len, right - left + 1)
-
-return max_len
+    result = max(result, right - left + 1)
+return result
 ```
-
-```
-- add a → window=[a]
-- add b → window=[a,b]
-- add c → window=[a,b,c] → len=3
-- add a → duplicate! shrink left → window=[b,c,a] → len=3
-- add c → duplicate! shrink left → window=[a,c] → len=2
-max=3 ✓
-```
-
-**Complexity:** O(n) time, O(k) space where k = window size
+**Complexity:** O(n) time. O(k) space where k = window size.
 
 ---
 ---
@@ -1306,9 +1189,9 @@ Output:   [1,2,3,4,5,6,7,8,9]
 ### Template 1 — Top K Largest
 
 ```
-Input:    [3,1,4,1,5,9,2,6], k=3
-Question: What are the 3 largest elements?
-Output:   [5,6,9]
+Input:    [1,1,1,2,2,3], k=2
+Question: What are the top 2 most frequent elements?
+Output:   [1, 2]
 ```
 
 ```python
@@ -1360,7 +1243,7 @@ return result
 
 ```
 - initial heap=[(1,0,0),(2,1,0),(3,2,0)]
-- pop 1 → result=[1], push (4,0,1) → heap=[(2,1,0),(3,2,0),(4,0,1)]
+- pop 1 → result=[1], push (4,0,1)
 - pop 2 → result=[1,2], push (5,1,1)
 - pop 3 → result=[1,2,3], push (6,2,1)
 ...continues until all lists exhausted ✓
@@ -1388,8 +1271,6 @@ Backtracking:
 - At each element, try including it and excluding it
 - Build incrementally, undo when done exploring that path
 ```
-
-**Why this works:** structured brute force. Build → explore → undo. Cut off paths that can't work.
 
 ---
 
@@ -1419,7 +1300,6 @@ Question: Which combinations sum to 7?
 Output:   [[2,2,3],[7]]
 
 - try 2 → remaining=5 → try 2 → remaining=3 → try 3 → remaining=0 → found [2,2,3]
-- try 2 → remaining=5 → try 3 → remaining=2 → try 2 → remaining=0 → found [2,3,2] (skip dup)
 - try 7 → remaining=0 → found [7]
 ```
 
@@ -1869,7 +1749,7 @@ Greedy:
 ```
 Input:    meetings=[(1,3),(2,4),(3,5),(4,6)]
 Question: Maximum non-overlapping meetings?
-Output:   3
+Output:   2
 
 - sort by end: [(1,3),(2,4),(3,5),(4,6)]
 - pick (1,3) → last_end=3
