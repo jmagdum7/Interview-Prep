@@ -513,24 +513,27 @@ return result
 | "matching brackets", "valid nesting" | Stack push/pop | 1 |
 | "undo", "go back", "reverse order" | Stack | 1 |
 | "next greater element", "daily temperatures" | Monotonic stack | 2 |
-| "evaluate expression", "calculator" | Stack | 1 |
+| "evaluate expression", "calculator" | Expression stack | 3 |
 | "nested structure", "recursive-looking" | Stack | 1 |
 
 ---
 
 ### Questions to Ask Before Coding
 
-**Q1 — Am I matching something to a previous element, or finding the next element that breaks an order?**
-- Matching → Template 1 (push/pop validation)
-- Next greater/smaller → Template 2 (monotonic stack)
+**Q1 — Am I matching/validating structure, finding next greater/smaller, or evaluating an expression?**
+- Matching or validating → Template 1
+- Next greater/smaller element → Template 2
+- Evaluate expression with operators → Template 3
 
 **Q2 — What do I push onto the stack?**
 - The element itself (for matching) → Template 1
 - The index (for position-based problems) → Template 2
+- Numbers and operators separately → Template 3
 
 **Q3 — When do I pop?**
 - On a closing match → Template 1
 - When current element breaks the monotonic order → Template 2
+- When you see an operator or closing parenthesis → Template 3
 
 ---
 
@@ -538,22 +541,35 @@ return result
 
 ```python
 stack = []
+
+for element in sequence:
+    if <element is an opener>:
+        stack.append(element)       # push — remember it for later
+    elif <element is a closer>:
+        if not stack or <top doesn't match>:
+            return False            # nothing to match — invalid
+        stack.pop()                 # matched — discard both
+
+return len(stack) == 0             # valid only if nothing left unmatched
+```
+
+**Example — are all brackets matched in `"({[]})"`?**
+```python
+stack = []
 matching = {')': '(', '}': '{', ']': '['}
 
 for char in s:
     if char in '({[':
-        stack.append(char)          # push opening bracket
+        stack.append(char)
     elif char in ')}]':
         if not stack or stack[-1] != matching[char]:
-            return False            # no match — invalid
-        stack.pop()                 # matched — pop
+            return False
+        stack.pop()
 
-return len(stack) == 0             # valid only if nothing unmatched
+return len(stack) == 0
 ```
-
-**Example — are all brackets matched in `"({[]})"`?**
 ```
-Q1: matching brackets → Template 1
+Q1: matching → Template 1
 Q2: push the opening bracket itself
 Q3: pop when closing bracket matches top
 
@@ -572,29 +588,145 @@ empty → True ✓
 ### Template 2 — Monotonic Stack
 
 ```python
-stack = []                          # stores indices
-result = [-1] * len(arr)            # default: no greater element
+stack = []                          # stores indices of unresolved elements
+result = [<default>] * len(arr)     # fill with default answer (e.g. -1 or 0)
 
 for i in range(len(arr)):
-    while stack and arr[i] > arr[stack[-1]]:  # current breaks order
+    while stack and <current element breaks the order>:
         idx = stack.pop()
-        result[idx] = arr[i]        # current is next greater for idx
-    stack.append(i)
+        result[idx] = <answer for idx using current element>
+    stack.append(i)                 # push index — resolve it later
 
 return result
 ```
 
 **Example — next greater element for `[2,1,3,4]`:**
+```python
+stack = []
+result = [-1] * len(arr)
+
+for i in range(len(arr)):
+    while stack and arr[i] > arr[stack[-1]]:
+        idx = stack.pop()
+        result[idx] = arr[i]
+    stack.append(i)
+
+return result
+```
 ```
 Q1: next element breaking order → Template 2
-Q2: push index (need position)
-Q3: pop when current > top
+Q2: push index — need position to update result
+Q3: pop when current > top of stack
 
 i=0(2): stack=[0]
 i=1(1): 1<2 → push → stack=[0,1]
 i=2(3): 3>1 → result[1]=3, pop. 3>2 → result[0]=3, pop. push → stack=[2]
 i=3(4): 4>3 → result[2]=4, pop. push → stack=[3]
 result=[3,3,4,-1] ✓
+```
+**Complexity:** O(n) time. O(n) space.
+
+---
+
+### Template 3 — Expression Evaluation (any variant)
+
+```python
+stack = []
+
+for token in sequence:
+
+    # DECISION 1: operand — push it, use it when triggered
+    if <token is a value>:
+        stack.append(<parsed token>)
+
+    # DECISION 2: operator OR closing delimiter — pop, compute, push result
+    # closing ')' is a trigger to compute, same as an operator
+    elif <token is an operator or closing delimiter ')'>:
+        b = stack.pop()                      # most recent operand
+        a = stack.pop()                      # operand before that
+        stack.append(<compute(a, b, token)>) # push result — stack shrinks by 1
+
+    # DECISION 3 (optional): opening delimiter — save current state
+    # only needed when expression has scopes e.g. '('
+    elif <token is '('>:
+        stack.append(<current state>)        # save context, reset for inner scope
+
+return stack[0]                              # final result sits alone on stack
+```
+
+**Example — Evaluate Reverse Polish Notation `["2","1","+","3","*"]`:**
+```
+Q1: evaluate expression → Template 3
+Decision 1: number → push
+Decision 2: operator → pop two, compute, push result
+Decision 3: not needed — no delimiters in RPN
+
+token="2" → Decision 1 → stack=[2]
+token="1" → Decision 1 → stack=[2,1]
+token="+" → Decision 2 → pop 1, pop 2 → 2+1=3 → stack=[3]
+token="3" → Decision 1 → stack=[3,3]
+token="*" → Decision 2 → pop 3, pop 3 → 3*3=9 → stack=[9]
+return stack[0] = 9 ✓
+```
+
+**Example — Basic Calculator `"(1+(4+5)-3)"`:**
+```python
+stack = []
+result = 0
+sign = 1        # +1 or -1
+num = 0
+
+for char in s:
+    if char.isdigit():
+        num = num * 10 + int(char)      # Decision 1: build multi-digit number
+
+    elif char in '+-':
+        result += sign * num            # Decision 2: apply completed number
+        num = 0
+        sign = 1 if char == '+' else -1 # update sign for next number
+
+    elif char == '(':
+        stack.append(result)            # Decision 3: save result so far
+        stack.append(sign)              # Decision 3: save sign before '('
+        result = 0                      # reset for inner expression
+        sign = 1
+
+    elif char == ')':
+        result += sign * num            # Decision 2: apply last number in brackets
+        num = 0
+        result *= stack.pop()           # restore sign before '('
+        result += stack.pop()           # restore result before '('
+
+result += sign * num                    # apply final number
+return result
+```
+```
+trace "(1+(4+5)-3)":
+( → save result=0, sign=1 → stack=[0,1]
+1 → num=1
++ → result=1, sign=+1
+( → save result=1, sign=1 → stack=[0,1,1,1]
+4 → num=4
++ → result=4, sign=+1
+5 → num=5
+) → result=4+5=9, *pop(1)=9, +pop(1)=10 → result=10
+- → result=10, sign=-1
+3 → num=3
+) → result=10-3=7, *pop(1)=7, +pop(0)=7
+return 7 ✓
+```
+
+**How other variants map:**
+```
+Basic Calculator — has parentheses:
+  "(" → Decision 3 (save state)
+  ")" → Decision 2 (restore state + apply)
+  numbers/operators → Decision 1 and 2
+
+Decode String e.g. "3[ab]":
+  digit → Decision 1 (push count)
+  "[" → Decision 3 (save current string)
+  "]" → Decision 2 (pop and repeat)
 ```
 **Complexity:** O(n) time. O(n) space.
 
@@ -900,13 +1032,15 @@ Dummy absorbs head changes — always return dummy.next
 | "validate", "compare two trees", "mirror" | DFS recursive | 1 |
 | "level by level", "same depth", "layer" | BFS | 2 |
 | "shortest path", "fewest steps" | BFS | 2 |
+| "path sum", "root to leaf", "path between nodes" | DFS with path tracking | 3 |
 
 ---
 
 ### Questions to Ask Before Coding
 
 **Q1 — Do I need information from the leaves to answer the question at the root?**
-- Yes → DFS bottom-up → Template 1
+- Yes, and I'm combining values on the way back up → DFS → Template 1
+- Yes, and I need to track the running path itself → DFS with path → Template 3
 - No → continue to Q2
 
 **Q2 — Does the answer involve processing nodes level by level?**
@@ -935,7 +1069,7 @@ def dfs(node):
 
 **Example — height of tree:**
 ```
-Q1: need leaf info → DFS → Template 1
+Q1: need leaf info, combining on way back → Template 1
 Q3: return 1 + max(left, right)
 
         1
@@ -981,6 +1115,50 @@ pop 4, pop 5 → queue=[]
 order: 1,2,3,4,5 ✓
 ```
 **Complexity:** O(n) time. O(n) space.
+
+---
+
+### Template 3 — DFS with Path Tracking
+
+```python
+def dfs(node, current_path, current_sum):
+    if not node:
+        return
+
+    current_path.append(node.val)   # add to path
+    current_sum += node.val
+
+    if not node.left and not node.right:  # leaf node
+        if <condition on current_sum or path>:
+            result.append(current_path[:])  # found valid path
+
+    dfs(node.left,  current_path, current_sum)
+    dfs(node.right, current_path, current_sum)
+
+    current_path.pop()              # undo — backtrack
+
+result = []
+dfs(root, [], 0)
+return result
+```
+
+**Example — find all root-to-leaf paths that sum to target:**
+```
+Q1: need to track running path → Template 3
+
+        1
+       / \
+      2   3
+     / \
+    4   5
+
+dfs(1, [], 0) → path=[1], sum=1
+dfs(2, [1], 1) → path=[1,2], sum=3
+dfs(4, [1,2], 3) → leaf, sum=7 → check
+dfs(5, [1,2], 3) → leaf, sum=8 → check
+dfs(3, [1], 1) → leaf, sum=4 → check
+```
+**Complexity:** O(n) time. O(h) space where h=height.
 
 ---
 ---
@@ -1136,8 +1314,8 @@ pop 3 → result=[1,2,3], push (6,2,1)
 | "all subsets", "power set" | Include/exclude each element | 1 |
 | "all permutations" | Try each unused element at each position | 2 |
 | "all combinations that sum to target" | Running sum with pruning | 3 |
+| "word search", "path in grid", "fill board" | Grid backtracking | 4 |
 | "solve puzzle", "fill grid" | Try, recurse, undo on contradiction | 3 variant |
-| "all paths in graph/tree" | DFS with path tracking | 1 variant |
 
 ---
 
@@ -1151,9 +1329,13 @@ pop 3 → result=[1,2,3], push (6,2,1)
 - No → pass `i + 1` as next start → Template 1
 - Yes → pass `i` as next start (same element allowed again) → Template 3
 
-**Q3 — What is the pruning condition?**
+**Q3 — Am I searching through a 2D grid?**
+- Yes → grid backtracking → Template 4
+
+**Q4 — What is the pruning condition?**
 - This goes in your early `return` before the loop
 - Sum exceeds target → `if remaining < 0: return`
+- Out of bounds or visited → `if not valid: return`
 - Invalid board state → `if not valid(board): return`
 
 ---
@@ -1246,13 +1428,58 @@ return result
 ```
 Q1: order doesn't matter → forward iteration
 Q2: reuse allowed → pass i not i+1
-Q3: prune when remaining < 0
+Q4: prune when remaining < 0
 
 try 2 → rem=5 → try 2 → rem=3 → try 3 → rem=0 → add [2,2,3]
 try 7 → rem=0 → add [7]
 result: [[2,2,3],[7]] ✓
 ```
 **Complexity:** O(2^n) worst case, pruning reduces in practice.
+
+---
+
+### Template 4 — Grid Backtracking (Word Search)
+
+```python
+def backtrack(r, c, index):
+    if index == len(word):
+        return True                 # found entire word
+
+    if r < 0 or r >= rows or c < 0 or c >= cols:
+        return False                # out of bounds
+    if grid[r][c] != word[index]:
+        return False                # wrong character
+    if (r, c) in visited:
+        return False                # already used this cell
+
+    visited.add((r, c))            # mark as used
+
+    found = (backtrack(r+1, c, index+1) or   # explore all 4 directions
+             backtrack(r-1, c, index+1) or
+             backtrack(r, c+1, index+1) or
+             backtrack(r, c-1, index+1))
+
+    visited.remove((r, c))         # undo — unmark for other paths
+    return found
+
+visited = set()
+for r in range(rows):
+    for c in range(cols):
+        if backtrack(r, c, 0):
+            return True
+return False
+```
+
+**Example — find "ABC" in grid `[["A","B","C"],["D","E","F"]]`:**
+```
+Q3: searching 2D grid → Template 4
+Q4: prune if out of bounds, wrong char, or already visited
+
+start at (0,0)='A' → match index=0
+  move right (0,1)='B' → match index=1
+    move right (0,2)='C' → match index=2 → found ✓
+```
+**Complexity:** O(rows * cols * 4^len(word)) time. O(len(word)) space.
 
 ---
 ---
@@ -1275,6 +1502,7 @@ result: [[2,2,3],[7]] ✓
 | "can reach", "is path possible" | DFS/BFS | 1 or 2 |
 | "dependency order", "valid ordering" | Topological sort | 3 |
 | "spread", "infection", "multi-source" | Multi-source BFS | 2 variant |
+| "union", "merge groups", "same component" | Union-Find | 4 |
 
 ---
 
@@ -1290,6 +1518,9 @@ result: [[2,2,3],[7]] ✓
 **Q3 — Is the graph a grid or an adjacency list?**
 - Grid → DFS with bounds checking → Template 1 grid variant
 - Adjacency list → standard DFS/BFS with visited set
+
+**Q4 — Am I repeatedly merging groups and checking if two nodes are in the same group?**
+- Yes → Union-Find → Template 4 (faster than repeated DFS for dynamic connectivity)
 
 ---
 
@@ -1411,6 +1642,42 @@ pop D → order=[A,B,C,D] ✓
 **Complexity:** O(V+E) time. O(V) space.
 
 ---
+
+### Template 4 — Union-Find (Disjoint Set)
+
+```python
+parent = list(range(n))             # each node starts as its own parent
+rank   = [0] * n                    # rank for union by rank optimisation
+
+def find(x):
+    if parent[x] != x:
+        parent[x] = find(parent[x]) # path compression
+    return parent[x]
+
+def union(x, y):
+    px, py = find(x), find(y)
+    if px == py:
+        return False                 # already in same component
+    if rank[px] < rank[py]:
+        px, py = py, px
+    parent[py] = px                  # attach smaller tree under larger
+    if rank[px] == rank[py]:
+        rank[px] += 1
+    return True
+```
+
+**Example — count connected components among n=4 nodes, edges=[(0,1),(1,2)]:**
+```
+Q4: repeatedly merging groups → Union-Find → Template 4
+
+parent=[0,1,2,3]
+union(0,1) → parent=[0,0,2,3], components=3
+union(1,2) → find(1)=0, parent=[0,0,0,3], components=2
+Node 3 isolated → 2 components ✓
+```
+**Complexity:** O(α(n)) per operation where α is inverse Ackermann — effectively O(1).
+
+---
 ---
 
 # 11. Dynamic Programming
@@ -1431,6 +1698,7 @@ pop D → order=[A,B,C,D] ✓
 | "minimum coins", "items reusable" | Unbounded knapsack | 3 |
 | "two sequences", "edit distance", "LCS" | 2D DP | 4 |
 | "palindrome", "split string optimally" | 2D DP on string | 4 variant |
+| "longest increasing subsequence", "chain of pairs" | LIS — 1D DP with inner loop | 5 |
 
 ---
 
@@ -1438,9 +1706,10 @@ pop D → order=[A,B,C,D] ✓
 
 **Q1 — What is the subproblem?**
 - This defines your dp array index
-- "ways to reach step i" → `dp[i]`
-- "max value with capacity w" → `dp[w]`
-- "edit distance for s1[:i] and s2[:j]" → `dp[i][j]`
+- "ways to reach step i" → `dp[i]` → Template 1
+- "max value with capacity w" → `dp[w]` → Template 2 or 3
+- "edit distance for s1[:i] and s2[:j]" → `dp[i][j]` → Template 4
+- "longest increasing subsequence ending at i" → `dp[i]` → Template 5
 
 **Q2 — Can items/choices be reused?**
 - No reuse → iterate backwards over capacity → Template 2
@@ -1450,6 +1719,7 @@ pop D → order=[A,B,C,D] ✓
 - Always set these first — they're the foundation everything builds on
 - `dp[0] = 0` (zero amount needs zero coins)
 - `dp[0][j] = j` (delete j chars to match empty string)
+- `dp[i] = 1` (every element is a subsequence of length 1) → Template 5
 
 ---
 
@@ -1560,6 +1830,38 @@ a vs u: no match → 1+min(dp[0][1],dp[1][0],dp[0][0])=1
 t vs t: match → dp[3][3]=1 ✓
 ```
 **Complexity:** O(n*m) time. O(n*m) space.
+
+---
+
+### Template 5 — LIS (Longest Increasing Subsequence)
+
+```python
+dp = [1] * len(nums)               # Q3: every element alone = length 1
+
+for i in range(len(nums)):
+    for j in range(i):             # check all previous elements
+        if nums[j] < nums[i]:      # nums[i] can extend subsequence ending at j
+            dp[i] = max(dp[i], dp[j] + 1)
+
+return max(dp)
+```
+
+**Example — LIS of `[10, 9, 2, 5, 3, 7, 101, 18]`:**
+```
+Q1: dp[i] = length of LIS ending at index i
+Q3: dp[i]=1 (each element is its own subsequence)
+
+dp[0]=1 (10)
+dp[1]=1 (9, can't extend 10)
+dp[2]=1 (2, can't extend anything)
+dp[3]=2 (5 extends 2 → [2,5])
+dp[4]=2 (3 extends 2 → [2,3])
+dp[5]=3 (7 extends [2,5] or [2,3] → [2,5,7] or [2,3,7])
+dp[6]=4 (101 extends [2,5,7] → [2,5,7,101])
+dp[7]=4 (18 extends [2,5,7] → [2,5,7,18])
+max(dp) = 4 ✓
+```
+**Complexity:** O(n²) time. O(n) space.
 
 ---
 ---
