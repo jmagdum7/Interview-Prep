@@ -747,7 +747,7 @@ Decode String e.g. "3[ab]":
 | You hear this... | Pattern | Template |
 |---|---|---|
 | "sorted array", "find target" | Classic binary search | 1 |
-| "first/last occurrence" | Binary search with boundary tracking | 3 |
+| "first/last occurrence" | Keep searching after match | 1 variant |
 | "minimum/maximum that satisfies condition" | Binary search on answer | 2 |
 | "find broken version", "first bad commit" | Binary search on condition | 2 |
 | "rotated sorted array" | Modified binary search | 1 variant |
@@ -757,14 +757,15 @@ Decode String e.g. "3[ab]":
 ### Questions to Ask Before Coding
 
 **Q1 — Am I searching for an exact value, or a boundary?**
-- Exact value → Template 1 (stop at first match)
-- First/last occurrence → Template 3 (keep searching after match)
+- Exact value → stop at first match → Template 1
+- First/last occurrence → record match, keep searching → Template 1 variant
+- Minimum/maximum that satisfies a condition → Template 2
 
 **Q2 — Is the search space the input array, or the answer itself?**
-- Input array → Template 1 or 3
-- Answer is a number in a range (e.g. minimum capacity) → Template 2
+- Input array → Template 1
+- Answer is a number in a range → Template 2
 
-**Q3 — What is my left and right bound?**
+**Q3 — What are my left and right bounds?**
 - Searching array → `left=0, right=len-1`
 - Searching answer space → `left=min_possible, right=max_possible`
 
@@ -779,61 +780,30 @@ while left <= right:
     mid = (left + right) // 2
 
     if arr[mid] == target:
-        return mid                  # found
+        return mid              # found — stop here
     elif arr[mid] < target:
-        left = mid + 1              # target in right half
+        left = mid + 1          # target must be in right half
     else:
-        right = mid - 1             # target in left half
+        right = mid - 1         # target must be in left half
 
-return -1
+return -1                       # not found
 ```
 
 **Example — find target=7 in `[1,3,5,7,9]`:**
-```
-Q1: exact value → Template 1
-Q2: searching array → left=0, right=4
-Q3: standard bounds
-
-left=0, right=4, mid=2(5): 5<7 → left=3
-left=3, right=4, mid=3(7): 7==7 → return 3 ✓
-```
-**Complexity:** O(log n) time. O(1) space.
-
----
-
-### Template 2 — Binary Search on Answer
-
 ```python
-left, right = min_possible, max_possible
+arr = [1,3,5,7,9], target = 7
+left=0, right=4
 
-while left < right:
-    mid = (left + right) // 2
-
-    if condition(mid):              # mid satisfies condition
-        right = mid                 # try smaller — find minimum
-    else:
-        left = mid + 1              # doesn't work — go bigger
-
-return left
-```
-
-**Example — minimum ship capacity to deliver in D days:**
-```
-Q1: boundary — minimum that works → Template 2
-Q2: answer space → left=max(weights), right=sum(weights)
-Q3: condition = can deliver all in D days at capacity mid
-
-left=5, right=15, mid=10 → works → right=10
-left=5, right=10, mid=7  → works → right=7
-left=5, right=7,  mid=6  → works → right=6
-left=5, right=6,  mid=5  → fails → left=6
-return 6 ✓
+step 1: mid=2, arr[2]=5 → 5<7 → left=3
+step 2: mid=3, arr[3]=7 → 7==7 → return 3 ✓
 ```
 **Complexity:** O(log n) time. O(1) space.
 
 ---
 
-### Template 3 — First/Last Occurrence
+### Template 1 variant — First/Last Occurrence
+
+Only change: don't return on match. Record it and keep searching.
 
 ```python
 left, right = 0, len(arr) - 1
@@ -843,9 +813,9 @@ while left <= right:
     mid = (left + right) // 2
 
     if arr[mid] == target:
-        result = mid                # record match, keep searching
-        right = mid - 1            # go left for first occurrence
-        # OR: left = mid + 1       # go right for last occurrence
+        result = mid            # record match — don't stop
+        right = mid - 1         # go left for first occurrence
+        # OR: left = mid + 1    # go right for last occurrence
     elif arr[mid] < target:
         left = mid + 1
     else:
@@ -855,17 +825,64 @@ return result
 ```
 
 **Example — first occurrence of 2 in `[1,2,2,2,3]`:**
-```
-Q1: first occurrence — boundary → Template 3
-Q2: searching array
-Q3: left=0, right=4
+```python
+arr = [1,2,2,2,3], target = 2
+left=0, right=4
 
-mid=2(idx 2): match → result=2, search left
-mid=2(idx 1): match → result=1, search left
-mid=1(idx 0): no match → search right
+step 1: mid=2, arr[2]=2 → match → result=2, search left → right=1
+step 2: mid=0, arr[0]=1 → 1<2 → left=1
+step 3: mid=1, arr[1]=2 → match → result=1, search left → right=0
+step 4: left>right → stop
 return 1 ✓
 ```
 **Complexity:** O(log n) time. O(1) space.
+
+---
+
+### Template 2 — Binary Search on Answer
+
+**When to use:** you're not searching an array. You're searching for the optimal value in a range of possible answers. You have a condition function that tells you if a given answer works.
+
+```python
+left, right = min_possible, max_possible
+
+while left < right:
+    mid = (left + right) // 2
+
+    if condition(mid):          # mid works — try smaller (finding minimum)
+        right = mid
+    else:
+        left = mid + 1          # mid doesn't work — go bigger
+
+return left
+```
+
+**Example — Koko Eating Bananas:**
+
+*Koko has piles of bananas. She has h hours to eat all bananas. Each hour she picks one pile and eats at most k bananas. Find the minimum k that lets her finish in time.*
+
+```python
+from math import ceil
+piles = [3, 6, 7, 11], h = 8
+
+# searching for k — the eating speed
+# min possible = 1, max possible = max(piles) = 11
+left, right = 1, 11
+
+def condition(k):
+    hours = sum(ceil(pile / k) for pile in piles)
+    return hours <= h
+
+step 1: mid=6  → hours=1+1+2+2=6 ≤ 8 → works → right=6
+step 2: mid=3  → hours=1+2+3+4=10 > 8 → fails → left=4
+step 3: mid=5  → hours=1+2+2+3=8 ≤ 8 → works → right=5
+step 4: mid=4  → hours=1+2+2+3=8 ≤ 8 → works → right=4
+step 5: left==right==4 → return 4 ✓
+```
+
+**The key insight:** you're not searching the array. You're asking *"does this value work?"* and binary searching the range of possible answers until you find the minimum that works.
+
+**Complexity:** O(n log m) time where n=array size, m=answer range. O(1) space.
 
 ---
 ---
