@@ -37,6 +37,49 @@
 ---
 ---
 
+## Part A — Blob to Pattern
+
+**Step 1 — Strip the problem:**
+```
+1. What is the actual data?
+2. What are you returning?
+```
+
+**Step 2 — Ask in order. Stop at first yes:**
+
+    Q1. All combinations, permutations, or paths?
+        → Backtracking
+
+    Q2. Answer to bigger input depends on smaller input?
+        → DP
+
+    Q3. Elements connect to each other?
+        → chain       → Linked List
+        → hierarchy   → Tree
+        → network     → Graph
+
+    Q4. Each item is a range [start, end]?
+        → Intervals
+
+    Q5. Order or position matters?
+        → sorted + find target or boundary     → Binary Search
+        → sorted + two elements satisfy cond   → Two Pointers
+        → subarray or substring                → Sliding Window
+        → nesting, undo, next greater          → Stack
+        → locally best choice, never undo      → Greedy
+
+    Q6. Min or max repeatedly from changing collection?
+        → Heap
+
+    Q7. Repeatedly looking something up?
+        → Arrays & Hashing
+
+    Q8. Numbers as bits?
+        → Bit Manipulation
+
+---
+---
+
 # 1. Arrays & Hashing
 
 ### Mental Trigger
