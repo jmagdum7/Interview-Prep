@@ -16,6 +16,7 @@
 
 ## Table of Contents
 
+- [Part A — Blob to Pattern](#part-a--blob-to-pattern)
 1. [Arrays & Hashing](#1-arrays--hashing)
 2. [Two Pointers](#2-two-pointers)
 3. [Sliding Window](#3-sliding-window)
