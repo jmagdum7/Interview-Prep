@@ -944,60 +944,78 @@ step 5: left==right==4 → return 4 ✓
 
 | You hear this... | Pattern | Template |
 |---|---|---|
-| "reverse without extra memory" | Pointer reversal | 1 |
-| "detect loop or cycle" | Fast/slow pointers | 2 |
+| "reverse a sublist between positions" | Pointer reversal | 1 |
+| "detect loop or cycle / find cycle entry" | Fast/slow pointers | 2 |
 | "find middle without knowing length" | Fast/slow pointers | 2 |
 | "Kth from end without full scan" | Two pointers gap k apart | 3 |
-| "merge two ordered streams" | Dummy node + two pointers | 4 |
+| "O(1) get and put with recency eviction" | Hash map + doubly linked list | 4 |
 
 ---
 
 ### Questions to Ask Before Coding
 
-**Q1 — Do I need to track the node before the one I'm changing?**
-- Yes → need `prev` pointer → Template 1
+**Q1 — Am I reversing or rewiring a sublist?**
+- Yes → need a `pre` anchor + pull-to-front loop → Template 1
 - No → continue to Q2
 
 **Q2 — Do I need two pointers at different speeds, or a fixed gap?**
 - Different speeds → Template 2 (middle, cycle detection)
 - Fixed gap k → Template 3 (kth from end)
 
-**Q3 — Does the head itself change?**
-- Yes → Template 4 (dummy node as fixed anchor)
-- No → manipulate directly
+**Q3 — Do I need O(1) lookup AND O(1) eviction by recency?**
+- Yes → Template 4 (LRU Cache)
 
 ---
 
-### Template 1 — Reverse (Pointer Reversal)
+### Template 1 — Reverse Linked List II (LC 92)
+
+```
+Problem: reverse only the nodes between positions left and right.
+Input:  1→2→3→4→5, left=2, right=4
+Output: 1→4→3→2→5
+```
 
 ```python
-prev, curr = None, head
+dummy = ListNode(0)
+dummy.next = head
+pre = dummy
 
-while curr:
-    next_node = curr.next           # save rest before losing it
-    curr.next = prev                # redirect pointer backwards
-    prev = curr                     # slide forward
-    curr = next_node
+for _ in range(left - 1):
+    pre = pre.next              # pre stops at node just before position left
 
-return prev                         # prev is the new head
+curr = pre.next                 # curr starts at the 'left' node
+
+for _ in range(right - left):
+    next_node = curr.next
+    curr.next = next_node.next          # detach next_node from the chain
+    next_node.next = pre.next           # next_node points to current front of reversed section
+    pre.next = next_node                # pre now points to next_node (new front)
 ```
 
-**Example — reverse `1→2→3→4`:**
+**Trace — Input: `1→2→3→4→5`, left=2, right=4:**
 ```
-Q1: need prev to redirect → Template 1
+After walk: pre=1, curr=2
+[dummy]→1→2→3→4→5
+              ↑pre.next (curr)
 
-INITIAL: prev=None, curr=1→2→3→4
-STEP 1:  next=2→3→4, 1→None | prev=1, curr=2
-STEP 2:  next=3→4,   2→1    | prev=2, curr=3
-STEP 3:  next=4,     3→2    | prev=3, curr=4
-STEP 4:  next=None,  4→3    | prev=4, curr=None
-return 4→3→2→1 ✓
+Iteration 1: next_node=3
+  curr(2).next = 4          → 1→2→4→5  (2 skips 3)
+  next_node(3).next = 2     → 3→2→4→5  (3 points to old front)
+  pre(1).next = 3           → 1→3→2→4→5
+
+Iteration 2: next_node=4
+  curr(2).next = 5          → 3→2→5    (2 skips 4)
+  next_node(4).next = 3     → 4→3→2→5  (4 points to old front)
+  pre(1).next = 4           → 1→4→3→2→5 ✓
 ```
+
 **Complexity:** O(n) time. O(1) space.
 
 ---
 
 ### Template 2 — Fast/Slow Pointers
+
+#### Part A — Find Middle
 
 ```python
 slow, fast = head, head
@@ -1006,19 +1024,52 @@ while fast and fast.next:
     slow = slow.next                # 1 step
     fast = fast.next.next           # 2 steps
 
-return slow                         # middle — or check slow==fast for cycle
+return slow                         # slow lands at middle
 ```
 
-**Example — find middle of `1→2→3→4→5`:**
+**Example — middle of `1→2→3→4→5`:**
 ```
-Q1: no prev needed
-Q2: different speeds → Template 2
-
 STEP 1: slow=2, fast=3
 STEP 2: slow=3, fast=5
 STEP 3: fast.next=None → stop
-slow=3 ← middle ✓
+return slow=3 ✓
 ```
+
+---
+
+#### Part B — Cycle Detection: Entry Point (LC 142)
+
+```
+Problem: find the node where the cycle begins. Return None if no cycle.
+```
+
+```python
+# Phase 1 — detect if cycle exists; find meeting point inside cycle
+slow, fast = head, head
+while fast and fast.next:
+    slow = slow.next
+    fast = fast.next.next
+    if slow == fast:
+        break
+else:
+    return None                     # loop finished without meeting → no cycle
+
+# Phase 2 — find cycle entry
+# Math guarantees: distance from head to entry == distance from meeting point to entry
+slow = head
+while slow != fast:
+    slow = slow.next
+    fast = fast.next
+
+return slow                         # both pointers meet at cycle entry
+```
+
+**Why Phase 2 works:**
+- Let `F` = steps from head to cycle entry, `C` = cycle length.
+- When they meet inside the cycle, slow has taken `F + a` steps, fast has taken `F + a + nC` steps (lapped slow `n` times).
+- Since fast moves 2× speed: `2(F + a) = F + a + nC` → `F = nC - a`.
+- Reset slow to head. Both advance 1 step at a time. After `F` steps, slow is at entry. Fast started `a` steps into the cycle and has moved `F = nC - a` more steps → `a + nC - a = nC` steps into cycle → also at entry.
+
 **Complexity:** O(n) time. O(1) space.
 
 ---
@@ -1040,37 +1091,130 @@ return left                         # left is kth from end
 
 **Example — 2nd from end of `1→2→3→4→5`:**
 ```
-Q1: no prev needed
-Q2: fixed gap k=2 → Template 3
-
 After gap: left=1, right=3
 STEP 1: left=2, right=4
 STEP 2: left=3, right=5
 STEP 3: right=None → stop
-return 4 ✓
+return left=4 ✓
 ```
 **Complexity:** O(n) time. O(1) space.
 
 ---
 
-### Template 4 — Dummy Node
+### Template 4 — LRU Cache (LC 146)
+
+```
+Problem: design a cache with get(key) and put(key, value).
+Both must run in O(1). When capacity is exceeded, evict the least recently used item.
+```
+
+#### Design
+
+The problem needs two operations, both in O(1):
+1. Look up a value by key instantly
+2. Track which item was used least recently, and evict it instantly
+
+- **Step 1 — O(1) lookup:** use a hash map `{key → node}`.
+- **Step 2 — O(1) recency tracking:** doubly linked list — remove a node and reinsert at tail in constant time.
+- **Step 3 — O(1) eviction:** least recently used node is always at left end. Evicting = removing first node.
+
+```
+[head] ↔ [LRU] ↔ ... ↔ [MRU] ↔ [tail]
+           ↑ evict               ↑ insert/promote
+```
+
+`head` and `tail` are empty placeholder nodes that never get evicted. Without them, removing the first or last real node leaves one side with no neighbor — you'd need `if` checks every time. With them, every real node always sits between two neighbors. Remove and insert are the same two lines every time, no special cases.
+
+#### Code
 
 ```python
-dummy = ListNode(0)                 # fixed anchor before real list
-dummy.next = head
-curr = dummy
+class Node:
+    def __init__(self, key, val):
+        self.key = key
+        self.val = val
+        self.prev = None
+        self.next = None
 
-# manipulate via curr...
+class LRUCache:
+    def __init__(self, capacity: int):
+        self.cap = capacity
+        self.cache = {}             # key → Node, for O(1) lookup
 
-return dummy.next                   # real head even if it changed
+        # Empty placeholder nodes at both ends.
+        # Real nodes always live between them.
+        self.head = Node(0, 0)      # left boundary — LRU side
+        self.tail = Node(0, 0)      # right boundary — MRU side
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
+    def _remove(self, node):
+        # Cut this node out by connecting its neighbors directly to each other
+        node.prev.next = node.next
+        node.next.prev = node.prev
+
+    def _insert_at_tail(self, node):
+        # Place node just before tail — rightmost real position = most recently used
+        prev = self.tail.prev       # whoever was MRU before
+        prev.next = node            # old MRU now points to this node
+        node.prev = prev
+        node.next = self.tail
+        self.tail.prev = node       # tail now points back to this node
+
+    def get(self, key: int) -> int:
+        if key not in self.cache:
+            return -1
+        node = self.cache[key]
+        # Move to tail — accessing a node makes it the most recently used
+        self._remove(node)
+        self._insert_at_tail(node)
+        return node.val
+
+    def put(self, key: int, value: int) -> None:
+        if key in self.cache:
+            # Key exists — remove old node before replacing it
+            self._remove(self.cache[key])
+
+        node = Node(key, value)
+        self.cache[key] = node
+        self._insert_at_tail(node)  # new node = most recently used
+
+        if len(self.cache) > self.cap:
+            # Evict LRU — it's always the first real node after head
+            lru = self.head.next
+            self._remove(lru)
+            del self.cache[lru.key] # remove from map or lookup will still find it
 ```
 
-**Example — use when merging lists or deleting head node:**
+#### Trace (capacity = 2)
+
 ```
-Q3: head might change → Template 4
-Dummy absorbs head changes — always return dummy.next
+put(1, 10)
+Action: Insert Node(1,10). List is empty, so it goes between placeholders.
+[head] ↔ [1|10] ↔ [tail]
+
+put(2, 20)
+Action: Insert Node(2,20) at tail (most recently used side).
+[head] ↔ [1|10] ↔ [2|20] ↔ [tail]
+          ↑ LRU              ↑ MRU
+
+get(1)
+Action: key=1 exists. Accessing it makes it MRU. Remove from middle, reinsert at tail.
+[head] ↔ [2|20] ↔ [1|10] ↔ [tail]
+          ↑ LRU              ↑ MRU
+return 10
+
+put(3, 30)
+Action: Insert Node(3,30). Cache size = 3 > cap=2. Must evict.
+LRU = head.next = Node(2,20). Remove it.
+[head] ↔ [1|10] ↔ [3|30] ↔ [tail]
+          ↑ LRU              ↑ MRU
+
+get(2)
+Action: key=2 was evicted. Not in cache.
+return -1 ✓
 ```
-**Complexity:** O(n) time. O(1) space.
+
+**Complexity:** O(1) get and put. O(n) space.
 
 ---
 ---
