@@ -597,7 +597,7 @@ for element in sequence:
 return len(stack) == 0             # valid only if nothing left unmatched
 ```
 
-**Example — are all brackets matched in `"({[]})"`?**
+**Example — are all brackets matched in `"({[]})"` ?**
 ```python
 stack = []
 matching = {')': '(', '}': '{', ']': '['}
@@ -1086,140 +1086,275 @@ Dummy absorbs head changes — always return dummy.next
 
 ### Translation Table
 
-| You hear this... | Pattern | Template |
-|---|---|---|
-| "total", "sum", "aggregate across all" | DFS bottom-up | 1 |
-| "longest", "deepest", "height", "diameter" | DFS with return values | 1 |
-| "validate", "compare two trees", "mirror" | DFS recursive | 1 |
-| "level by level", "same depth", "layer" | BFS | 2 |
-| "shortest path", "fewest steps" | BFS | 2 |
-| "path sum", "root to leaf", "path between nodes" | DFS with path tracking | 3 |
+| You hear this... | Template |
+|---|---|
+| "height", "depth", "diameter", "sum all nodes", "validate symmetry" | T1 — DFS bottom-up |
+| "level by level", "layer", "same depth", "fewest steps in tree" | T2 — BFS |
+| "root-to-leaf path", "path sum", "all paths" | T3 — DFS path tracking |
+| "BST", "sorted tree", "LCA", "insert/search in sorted tree" | T4 — BST |
 
 ---
 
 ### Questions to Ask Before Coding
 
-**Q1 — Do I need information from the leaves to answer the question at the root?**
-- Yes, and I'm combining values on the way back up → DFS → Template 1
-- Yes, and I need to track the running path itself → DFS with path → Template 3
-- No → continue to Q2
+**Q1 — Do I need values from children to answer at the parent?**
+- Yes → DFS bottom-up → T1
+- No → continue
 
-**Q2 — Does the answer involve processing nodes level by level?**
-- Yes → BFS → Template 2
+**Q2 — Does level (depth) matter?**
+- Yes → BFS → T2
 
-**Q3 — What do I return from each DFS call?**
-- This fills your `return` statement in Template 1
-- Height → `return 1 + max(left, right)`
-- Sum → `return node.val + left + right`
-- Valid → `return left and right and <condition>`
+**Q3 — Do I need to track the actual path from root to leaf?**
+- Yes → DFS with path → T3
+
+**Q4 — Is the tree sorted (BST) or is the problem about ordered structure?**
+- Yes → BST pattern → T4
 
 ---
 
-### Template 1 — DFS Recursive
+### T1 — DFS Recursive (Bottom-Up)
 
 ```python
 def dfs(node):
-    if not node:                    # base case — past a leaf
-        return 0                    # neutral value for this problem
+    if not node:
+        return 0            # base case: past a leaf, return neutral value
 
-    left  = dfs(node.left)          # answer from left subtree
-    right = dfs(node.right)         # answer from right subtree
+    left  = dfs(node.left)  # solve left subtree first
+    right = dfs(node.right) # solve right subtree first
 
-    return ...                      # Q3: combine left, right, node.val
+    return ...              # combine: 1 + max(left, right) for height
+                            #          node.val + left + right for sum
+                            #          left and right and <cond> for validation
 ```
 
 **Example — height of tree:**
-```
-Q1: need leaf info, combining on way back → Template 1
-Q3: return 1 + max(left, right)
 
+```
+Tree:
         1
        / \
       2   3
      / \
     4   5
 
-dfs(4)=1, dfs(5)=1
-dfs(2)=1+max(1,1)=2
-dfs(3)=1
-dfs(1)=1+max(2,1)=3 ✓
+Code:
+def dfs(node):
+    if not node:
+        return 0                        # base: empty subtree has height 0
+    left  = dfs(node.left)              # height of left subtree
+    right = dfs(node.right)             # height of right subtree
+    return 1 + max(left, right)         # this node adds 1 to the taller side
+
+Recursive reasoning — how to think about this:
+  Don't think about the whole tree. Think about ONE node.
+  Assume your children have already solved themselves.
+  What does this node do with their answers?
+
+  At node 2:
+    1. What do I return to my parent?   → my height (an int)
+    2. How do I combine my children?    → 1 + max(left, right)
+
+    left child (4) returns 1, right child (5) returns 1
+    → 1 + max(1, 1) = 2
+    Node 2 returns 2 to node 1. Node 1 does the same thing.
+    Recursion propagates this logic to every node automatically.
+
+Trace (calls resolve bottom-up):
+dfs(4) → left=0, right=0 → return 1
+dfs(5) → left=0, right=0 → return 1
+dfs(2) → left=1, right=1 → return 1+max(1,1) = 2
+dfs(3) → left=0, right=0 → return 1
+dfs(1) → left=2, right=1 → return 1+max(2,1) = 3 ✓
 ```
-**Complexity:** O(n) time. O(h) space where h=height.
+
+**Complexity:** O(n) time. O(h) space where h = height of tree.
 
 ---
 
-### Template 2 — BFS Level by Level
+### T2 — BFS (Level by Level)
 
 ```python
 from collections import deque
 
-queue = deque([root])
+def bfs(root):
+    if not root:
+        return []
 
-while queue:
-    node = queue.popleft()          # process oldest node first
+    queue = deque([root])
+    result = []
 
-    # process node here
+    while queue:
+        level_size = len(queue)         # how many nodes are at this level
+        level = []
 
-    if node.left:  queue.append(node.left)
-    if node.right: queue.append(node.right)
+        for _ in range(level_size):     # process exactly one level
+            node = queue.popleft()
+            level.append(node.val)
+
+            if node.left:  queue.append(node.left)
+            if node.right: queue.append(node.right)
+
+        result.append(level)            # done with this level
+
+    return result
 ```
 
-**Example — level by level traversal:**
-```
-Q1: no leaf info needed
-Q2: level by level → BFS → Template 2
+**Example — level-order traversal:**
 
-queue=[1] → pop 1, add 2,3 → queue=[2,3]
-pop 2, add 4,5 → queue=[3,4,5]
-pop 3 → queue=[4,5]
-pop 4, pop 5 → queue=[]
-order: 1,2,3,4,5 ✓
 ```
-**Complexity:** O(n) time. O(n) space.
+Tree:
+        1
+       / \
+      2   3
+     / \
+    4   5
+
+Trace:
+Start:   queue=[1], result=[]
+
+Level 1: level_size=1
+  pop 1, add 2,3 → level=[1]
+  result=[[1]], queue=[2,3]
+
+Level 2: level_size=2
+  pop 2, add 4,5 → level=[2]
+  pop 3, no children → level=[2,3]
+  result=[[1],[2,3]], queue=[4,5]
+
+Level 3: level_size=2
+  pop 4, pop 5 → level=[4,5]
+  result=[[1],[2,3],[4,5]] ✓
+```
+
+**Complexity:** O(n) time. O(n) space (queue holds at most one full level).
 
 ---
 
-### Template 3 — DFS with Path Tracking
+### T3 — DFS with Path Tracking
 
 ```python
-def dfs(node, current_path, current_sum):
+def dfs(node, path, current_sum):
     if not node:
         return
 
-    current_path.append(node.val)   # add to path
+    path.append(node.val)       # step in — add to path
     current_sum += node.val
 
-    if not node.left and not node.right:  # leaf node
-        if <condition on current_sum or path>:
-            result.append(current_path[:])  # found valid path
+    if not node.left and not node.right:    # reached a leaf
+        if current_sum == target:
+            result.append(path[:])          # copy path — don't reference it
 
-    dfs(node.left,  current_path, current_sum)
-    dfs(node.right, current_path, current_sum)
+    dfs(node.left,  path, current_sum)      # explore left
+    dfs(node.right, path, current_sum)      # explore right
 
-    current_path.pop()              # undo — backtrack
+    path.pop()                  # step out — undo this node before returning
 
 result = []
 dfs(root, [], 0)
 return result
 ```
 
-**Example — find all root-to-leaf paths that sum to target:**
-```
-Q1: need to track running path → Template 3
+**Example — find all root-to-leaf paths summing to target=7:**
 
+```
+Tree:
         1
        / \
       2   3
      / \
     4   5
 
-dfs(1, [], 0) → path=[1], sum=1
-dfs(2, [1], 1) → path=[1,2], sum=3
-dfs(4, [1,2], 3) → leaf, sum=7 → check
-dfs(5, [1,2], 3) → leaf, sum=8 → check
-dfs(3, [1], 1) → leaf, sum=4 → check
+target = 7
+
+Trace:
+dfs(1, [], 0)     → path=[1], sum=1
+  dfs(2, [1], 1)  → path=[1,2], sum=3
+    dfs(4, [1,2], 3)  → path=[1,2,4], sum=7 → leaf! sum==7 → add [1,2,4]
+    dfs(5, [1,2], 3)  → path=[1,2,5], sum=8 → leaf! sum!=7 → skip
+  pop 2 → path=[1]
+  dfs(3, [1], 1)  → path=[1,3], sum=4 → leaf! sum!=7 → skip
+  pop 3 → path=[1]
+pop 1 → path=[]
+
+result = [[1,2,4]] ✓
 ```
-**Complexity:** O(n) time. O(h) space where h=height.
+
+**Complexity:** O(n) time. O(h) space where h = height (path length at most h).
+
+---
+
+### T4 — BST Problems
+
+**The BST property:** left subtree < node < right subtree — at every node.
+
+```python
+# Validate BST
+def is_valid(node, min_val=float('-inf'), max_val=float('inf')):
+    if not node:
+        return True                     # empty tree is valid
+
+    # this node must be strictly inside (min_val, max_val)
+    if not (min_val < node.val < max_val):
+        return False
+
+    # left subtree: everything must be < node.val
+    # right subtree: everything must be > node.val
+    return (is_valid(node.left,  min_val, node.val) and
+            is_valid(node.right, node.val, max_val))
+
+
+# Lowest Common Ancestor (LCA) in BST
+def lca(node, p, q):
+    # both p and q are less → LCA must be in left subtree
+    if p.val < node.val and q.val < node.val:
+        return lca(node.left, p, q)
+
+    # both greater → LCA must be in right subtree
+    if p.val > node.val and q.val > node.val:
+        return lca(node.right, p, q)
+
+    # p and q are on different sides (or one equals node) → this node is LCA
+    return node
+
+
+# Search in BST
+def search(node, target):
+    if not node or node.val == target:
+        return node                     # found or exhausted
+
+    if target < node.val:
+        return search(node.left, target)
+    return search(node.right, target)
+```
+
+**Example — Validate BST:**
+
+```
+Tree:
+        5
+       / \
+      3   7
+     / \
+    2   4
+
+is_valid(5, -inf, +inf):
+  is_valid(3, -inf, 5):        # left of 5, so max becomes 5
+    is_valid(2, -inf, 3): True
+    is_valid(4, 3, 5): True
+  is_valid(7, 5, +inf): True   # right of 5, so min becomes 5
+→ True ✓
+```
+
+**Example — LCA of 2 and 4 in same tree:**
+
+```
+lca(5, p=2, q=4):
+  both < 5 → go left
+lca(3, p=2, q=4):
+  2 < 3 and 4 > 3 → split at 3 → LCA is 3 ✓
+```
+
+**Complexity:** O(h) time for all BST operations. O(h) space. Balanced BST → O(log n); worst case skewed → O(n).
 
 ---
 ---
