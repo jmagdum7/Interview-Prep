@@ -1256,6 +1256,184 @@ return -1 ✓
 
 ---
 
+### Recursion Mental Model
+
+```
+Q1. Base case:   What do I return when node is None?
+Q2. Recurse:     left = dfs(node.left) | right = dfs(node.right)
+Q3. Return:      What do I send up to my parent?
+```
+
+```python
+def dfs(node):
+    if not node: return ...           # Q1: neutral base value
+
+    left  = dfs(node.left)            # Q2: always — trust the result
+    right = dfs(node.right)
+
+    return ...                        # Q3: what does my parent need?
+```
+
+---
+
+**Example — Lowest Common Ancestor (LC 236)**
+
+```
+Find the deepest node that has both p and q somewhere in its subtree.
+
+        3
+       / \
+      5   1
+     / \ / \
+    6  2 0  8
+      / \
+     7   4
+
+p=5, q=4 → answer: 5
+p=5, q=1 → answer: 3
+```
+
+```python
+def lowestCommonAncestor(self, root, p, q):
+    def dfs(node):
+        if not node: return None          # Q1: None = "found nothing here"
+
+        left  = dfs(node.left)            # Q2
+        right = dfs(node.right)           # Q2
+
+        if node == p or node == q:        # Q3a: I am a target — report myself up
+            return node
+        if left and right:                # Q3b: both sides found something — I am LCA
+            return node
+        return left or right              # Q3c: bubble up whichever side found something
+
+    return dfs(root)
+```
+
+**Trace — p=5, q=4:**
+
+```
+dfs(3)
+  dfs(3).left = dfs(5)
+    dfs(5).left = dfs(6)
+      left=None, right=None. Not a target. → return None
+
+    dfs(5).right = dfs(2)
+      dfs(2).left = dfs(7)
+        left=None, right=None. Not a target. → return None
+
+      dfs(2).right = dfs(4)
+        left=None, right=None. node==q. → return node(4)
+
+      left=None, right=node(4). Not a target. One side found. → return node(4)
+
+    left=None, right=node(4). node==p. → return node(5)
+
+  dfs(3).right = dfs(1)
+    dfs(1).left = dfs(0)
+      left=None, right=None. Not a target. → return None
+
+    dfs(1).right = dfs(8)
+      left=None, right=None. Not a target. → return None
+
+    left=None, right=None. Not a target. → return None
+
+  left=node(5), right=None. One side found. → return node(5) ✓
+```
+
+The LCA is never found on the way down. It emerges on the way back up.
+
+---
+
+### DFS vs BFS
+
+| | DFS | BFS |
+|---|---|---|
+| Structure | Recursion (call stack) | Queue |
+| Direction | Dives deep first | Widens level by level |
+| Space | O(h) — tree height | O(w) — widest level |
+| Use when | Answer lives deep in a subtree | Need closest/shortest/first at any level |
+| Example problems | Max depth, diameter, path sum, validate BST | Level order, min depth, right side view |
+
+**Trigger words:**
+- DFS → "height", "depth", "path", "subtree", "diameter", "validate"
+- BFS → "level by level", "layer", "minimum depth", "nearest", "closest"
+
+**Rule of thumb:** answer could be anywhere deep → DFS. Need the closest/shortest/first at any level → BFS.
+
+---
+
+### Traversals
+
+```
+        1
+       / \
+      2   3
+     / \   \
+    4   5   6
+   /       /
+  7       8
+```
+
+---
+
+**Preorder — node first, then children (top-down)**
+
+Visit the node before going deeper. You see parents before their children.
+
+```python
+def preorder(node):
+    if not node: return
+
+    result.append(node.val)   # visit node FIRST
+    preorder(node.left)       # then left subtree
+    preorder(node.right)      # then right subtree
+```
+
+```
+Output: 1 → 2 → 4 → 7 → 5 → 3 → 6 → 8
+```
+
+---
+
+**Inorder — left first, then node, then right**
+
+Dive all the way left before visiting anything. For BSTs this gives sorted order.
+
+```python
+def inorder(node):
+    if not node: return
+
+    inorder(node.left)        # left subtree first
+    result.append(node.val)   # visit node IN BETWEEN
+    inorder(node.right)       # then right subtree
+```
+
+```
+Output: 7 → 4 → 2 → 5 → 1 → 3 → 8 → 6
+```
+
+---
+
+**Postorder — children first, then node (bottom-up)**
+
+Fully resolve both subtrees before visiting the node. You see children before parents.
+
+```python
+def postorder(node):
+    if not node: return
+
+    postorder(node.left)      # left subtree first
+    postorder(node.right)     # right subtree second
+    result.append(node.val)   # visit node LAST
+```
+
+```
+Output: 7 → 4 → 5 → 2 → 8 → 6 → 3 → 1
+```
+
+---
+
 ### T1 — DFS Recursive (Bottom-Up)
 
 ```python
@@ -1281,27 +1459,12 @@ Tree:
      / \
     4   5
 
-Code:
 def dfs(node):
     if not node:
         return 0                        # base: empty subtree has height 0
     left  = dfs(node.left)              # height of left subtree
     right = dfs(node.right)             # height of right subtree
     return 1 + max(left, right)         # this node adds 1 to the taller side
-
-Recursive reasoning — how to think about this:
-  Don't think about the whole tree. Think about ONE node.
-  Assume your children have already solved themselves.
-  What does this node do with their answers?
-
-  At node 2:
-    1. What do I return to my parent?   → my height (an int)
-    2. How do I combine my children?    → 1 + max(left, right)
-
-    left child (4) returns 1, right child (5) returns 1
-    → 1 + max(1, 1) = 2
-    Node 2 returns 2 to node 1. Node 1 does the same thing.
-    Recursion propagates this logic to every node automatically.
 
 Trace (calls resolve bottom-up):
 dfs(4) → left=0, right=0 → return 1
@@ -1499,6 +1662,32 @@ lca(3, p=2, q=4):
 ```
 
 **Complexity:** O(h) time for all BST operations. O(h) space. Balanced BST → O(log n); worst case skewed → O(n).
+
+---
+
+#### BST Inorder Sorted Property
+
+Inorder traversal of a BST always produces sorted output. This is the key property that unlocks several BST problems.
+
+```
+BST:
+        4
+       / \
+      2   6
+     / \ / \
+    1  3 5  7
+
+Inorder: 1 → 2 → 3 → 4 → 5 → 6 → 7  ✓ sorted
+```
+
+**When to use inorder on a BST:**
+- **Kth smallest** — inorder, stop at kth node
+- **Validate BST** — inorder output must be strictly increasing
+- **Find successor/predecessor** — next/prev in inorder sequence
+
+**When to use other traversals on a BST:**
+- **Preorder** — serialize / reconstruct a BST
+- **Postorder** — delete a BST (children before parent)
 
 ---
 ---
