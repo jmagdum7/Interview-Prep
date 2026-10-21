@@ -1436,49 +1436,77 @@ Output: 7 → 4 → 5 → 2 → 8 → 6 → 3 → 1
 
 ### T1 — DFS Recursive (Bottom-Up)
 
+**Why T1 exists:** Many tree problems (height, sum, balance, diameter) need the answer from both subtrees before a node can answer. DFS dives to the bottom first, then answers flow back up.
+
+**Template**
+
 ```python
 def dfs(node):
+    # Q1: Base case — what do I return when there's no node?
+    #     A neutral value that won't affect the parent's calculation
     if not node:
-        return 0            # base case: past a leaf, return neutral value
+        return 0           # 0 for height/sum, True for validation, None for search
 
-    left  = dfs(node.left)  # solve left subtree first
-    right = dfs(node.right) # solve right subtree first
+    # Q2: Recurse — let both subtrees solve themselves first
+    left  = dfs(node.left)
+    right = dfs(node.right)
 
-    return ...              # combine: 1 + max(left, right) for height
-                            #          node.val + left + right for sum
-                            #          left and right and <cond> for validation
+    # Q3: Return — combine what the children gave you, send it up
+    return 1 + max(left, right)   # height: this node adds 1 to the taller side
+                                   # sum:    node.val + left + right
+                                   # valid:  left and right and <condition>
+
+dfs(root)
 ```
 
-**Example — height of tree:**
+**Why the code looks like this**
+
+- **Recurse before returning:** A node can't answer until its children have answered.
+- **Neutral base value:** An empty subtree must not change the parent's answer (height 0, sum 0).
+- **Return, don't store:** Each node hands its answer to its parent. The parent never looks deeper.
+
+**Example — height of tree**
 
 ```
 Tree:
         1
        / \
       2   3
-     / \
-    4   5
+     / \   \
+    4   5   6
+   /
+  7
 
-def dfs(node):
-    if not node:
-        return 0                        # base: empty subtree has height 0
-    left  = dfs(node.left)              # height of left subtree
-    right = dfs(node.right)             # height of right subtree
-    return 1 + max(left, right)         # this node adds 1 to the taller side
+Trace:
+dfs(1) → dfs(2) → dfs(4) → dfs(7)    # dive to the deepest node first
 
-Trace (calls resolve bottom-up):
-dfs(4) → left=0, right=0 → return 1
+dfs(7) → left=0, right=0 → return 1
+dfs(4) → left=1, right=0 → return 2
 dfs(5) → left=0, right=0 → return 1
-dfs(2) → left=1, right=1 → return 1+max(1,1) = 2
-dfs(3) → left=0, right=0 → return 1
-dfs(1) → left=2, right=1 → return 1+max(2,1) = 3 ✓
+dfs(2) → left=2, right=1 → return 3
+dfs(6) → left=0, right=0 → return 1
+dfs(3) → left=0, right=1 → return 2
+dfs(1) → left=3, right=2 → return 4  ✓
 ```
 
-**Complexity:** O(n) time. O(h) space where h = height of tree.
+**Complexity:** O(n) time. O(h) space (call stack depth = tree height).
 
 ---
 
 ### T2 — BFS (Level by Level)
+
+**Why T2 exists:** Some problems care about levels, not depth in a subtree: "level by level", "closest", "shortest", "first at any level".
+
+**The idea**
+
+- **Why a queue?** A queue is FIFO (first in, first out). Nodes are processed in the order they were discovered, so a whole level is finished before the next one starts. A stack (LIFO) would dive deep instead.
+- **Algorithm in short:**
+  1. Put root in the queue
+  2. Snapshot the queue size — that is exactly one level
+  3. Process that many nodes, adding their children to the queue
+  4. Children form the next level. Repeat
+
+**Template**
 
 ```python
 from collections import deque
@@ -1487,207 +1515,269 @@ def bfs(root):
     if not root:
         return []
 
-    queue = deque([root])
+    queue = deque([root])           # seed with root — this is level 0
     result = []
 
-    while queue:
-        level_size = len(queue)         # how many nodes are at this level
+    while queue:                    # one loop = one full level
+        level_size = len(queue)     # snapshot: exactly this many nodes are in the current level
+                                    # (children are not added yet, so the count is clean)
         level = []
 
-        for _ in range(level_size):     # process exactly one level
-            node = queue.popleft()
+        for _ in range(level_size): # process this level only — no more, no less
+            node = queue.popleft()  # FIFO: oldest discovery goes first
             level.append(node.val)
 
-            if node.left:  queue.append(node.left)
-            if node.right: queue.append(node.right)
+            if node.left:  queue.append(node.left)    # children wait in the queue
+            if node.right: queue.append(node.right)   # for the NEXT level
 
-        result.append(level)            # done with this level
+        result.append(level)        # one full level collected
 
     return result
 ```
 
-**Example — level-order traversal:**
+**Why the code looks like this**
+
+- **`level_size = len(queue)` before the loop:** Children are added during the loop. Taking the size first stops the loop from running into the next level.
+- **`popleft()`:** Takes the oldest node. That keeps left-to-right order within a level.
+- **Children appended to the back:** They sit behind the current level, so they are only reached after it finishes.
+
+**Example — level-order traversal**
 
 ```
 Tree:
         1
        / \
       2   3
-     / \
-    4   5
+     / \   \
+    4   5   6
+   /       /
+  7       8
 
 Trace:
-Start:   queue=[1], result=[]
+Start: queue=[1], result=[]
 
-Level 1: level_size=1
-  pop 1, add 2,3 → level=[1]
-  result=[[1]], queue=[2,3]
+Level 1: level_size=1, queue=[1]
+  pop 1 → add 2,3     → level=[1]
+  result=[[1]]
 
-Level 2: level_size=2
-  pop 2, add 4,5 → level=[2]
-  pop 3, no children → level=[2,3]
-  result=[[1],[2,3]], queue=[4,5]
+Level 2: level_size=2, queue=[2,3]
+  pop 2 → add 4,5
+  pop 3 → add 6       → level=[2,3]
+  result=[[1],[2,3]]
 
-Level 3: level_size=2
-  pop 4, pop 5 → level=[4,5]
-  result=[[1],[2,3],[4,5]] ✓
+Level 3: level_size=3, queue=[4,5,6]
+  pop 4 → add 7
+  pop 5 → no children
+  pop 6 → add 8       → level=[4,5,6]
+  result=[[1],[2,3],[4,5,6]]
+
+Level 4: level_size=2, queue=[7,8]
+  pop 7, pop 8        → level=[7,8]
+  result=[[1],[2,3],[4,5,6],[7,8]] ✓
 ```
 
-**Complexity:** O(n) time. O(n) space (queue holds at most one full level).
+**Complexity:** O(n) time. O(w) space (queue holds at most the widest level).
 
 ---
 
 ### T3 — DFS with Path Tracking
 
+**Why T3 exists:** Some problems ask about the **route** from the root, not just a value. A node can't see what's above it, so we carry the route down with us.
+
+**How is T3 different from T1?**
+
+| | T1 | T3 |
+|---|---|---|
+| Direction | Bottom-up | Top-down |
+| What you pass | Nothing extra | `path` and running state |
+| When you act | After children return | Before recursing |
+| Goal | Compute something at every node | Track the route from root to leaf |
+
+**Template**
+
 ```python
+result = []
+
+def dfs(node, path):
+    if not node:
+        return                          # nothing to do past a leaf
+
+    # Step in — act before recursing
+    path.append(node.val)
+
+    # Leaf = end of a root-to-leaf route
+    if not node.left and not node.right:
+        if <condition on path>:         # ← the only part that changes per problem
+            result.append(path[:])      # save a snapshot of the path
+
+    # Go deeper
+    dfs(node.left,  path)
+    dfs(node.right, path)
+
+    # Step out — undo before returning to parent (backtracking)
+    path.pop()
+
+dfs(root, [])
+return result
+```
+
+If the condition needs a running value (like a sum), pass it as an extra argument: `dfs(node.left, path, current_sum)`. Ints are copied on each call, so they need no undo. Only the list needs `pop()`.
+
+**Why the code looks like this**
+
+- **`path.append` before recursing:** The route is built on the way down, so add yourself first.
+- **`path.pop()` at the end:** One list is shared by the whole tree. Remove yourself when leaving, or the next branch inherits your node.
+- **`path[:]` when saving:** `path` keeps changing. A copy freezes what it looked like at this leaf.
+
+**Example**
+
+**Problem:** Every root-to-leaf route has a total (add up the values along it). Return the routes whose total equals 8.
+
+Here the template is filled in for this problem. The extra argument is `current_sum` and the condition is `current_sum == target`.
+
+```python
+result = []
+
 def dfs(node, path, current_sum):
     if not node:
         return
 
-    path.append(node.val)       # step in — add to path
+    path.append(node.val)
     current_sum += node.val
 
-    if not node.left and not node.right:    # reached a leaf
-        if current_sum == target:
-            result.append(path[:])          # copy path — don't reference it
+    if not node.left and not node.right:
+        if current_sum == target:       # ← the template's <condition>
+            result.append(path[:])
 
-    dfs(node.left,  path, current_sum)      # explore left
-    dfs(node.right, path, current_sum)      # explore right
+    dfs(node.left,  path, current_sum)
+    dfs(node.right, path, current_sum)
 
-    path.pop()                  # step out — undo this node before returning
+    path.pop()
 
-result = []
 dfs(root, [], 0)
 return result
 ```
-
-**Example — find all root-to-leaf paths summing to target=7:**
 
 ```
 Tree:
         1
        / \
-      2   3
-     / \
-    4   5
+      2   6
+     / \   \
+    4   5   3
+   /
+  7
 
-target = 7
+target = 8
 
 Trace:
-dfs(1, [], 0)     → path=[1], sum=1
-  dfs(2, [1], 1)  → path=[1,2], sum=3
-    dfs(4, [1,2], 3)  → path=[1,2,4], sum=7 → leaf! sum==7 → add [1,2,4]
-    dfs(5, [1,2], 3)  → path=[1,2,5], sum=8 → leaf! sum!=7 → skip
+dfs(1, [], 0)            → path=[1], sum=1
+  dfs(2, [1], 1)         → path=[1,2], sum=3
+    dfs(4, [1,2], 3)     → path=[1,2,4], sum=7
+      dfs(7,[1,2,4],7)   → path=[1,2,4,7], sum=14 → leaf, sum≠8 → skip
+      pop 7 → path=[1,2,4]
+    pop 4 → path=[1,2]
+    dfs(5, [1,2], 3)     → path=[1,2,5], sum=8 → leaf, sum==8 → add [1,2,5] ✓
+    pop 5 → path=[1,2]
   pop 2 → path=[1]
-  dfs(3, [1], 1)  → path=[1,3], sum=4 → leaf! sum!=7 → skip
-  pop 3 → path=[1]
+  dfs(6, [1], 1)         → path=[1,6], sum=7
+    dfs(3, [1,6], 7)     → path=[1,6,3], sum=10 → leaf, sum≠8 → skip
+    pop 3 → path=[1,6]
+  pop 6 → path=[1]
 pop 1 → path=[]
 
-result = [[1,2,4]] ✓
+result = [[1,2,5]] ✓
 ```
 
-**Complexity:** O(n) time. O(h) space where h = height (path length at most h).
+**Complexity:** O(n) time. O(h) space (path length = tree height at most).
 
 ---
 
 ### T4 — BST Problems
 
-**The BST property:** left subtree < node < right subtree — at every node.
+**Why T4 exists:** A BST is sorted by structure. At every node, left is smaller and right is larger. Every BST problem uses this to either **discard one side** or **read values in sorted order**. The 3 blocks below cover most FAANG BST questions.
+
+```
+Tree used in the traces:
+        8
+       / \
+      4   12
+     / \    \
+    2   6    14
+       /
+      5
+```
+
+#### Block 1: Go one side only
 
 ```python
-# Validate BST
-def is_valid(node, min_val=float('-inf'), max_val=float('inf')):
+def dfs(node, target):
     if not node:
-        return True                     # empty tree is valid
+        return ...                          # fell off: not found / empty slot
 
-    # this node must be strictly inside (min_val, max_val)
-    if not (min_val < node.val < max_val):
-        return False
-
-    # left subtree: everything must be < node.val
-    # right subtree: everything must be > node.val
-    return (is_valid(node.left,  min_val, node.val) and
-            is_valid(node.right, node.val, max_val))
-
-
-# Lowest Common Ancestor (LCA) in BST
-def lca(node, p, q):
-    # both p and q are less → LCA must be in left subtree
-    if p.val < node.val and q.val < node.val:
-        return lca(node.left, p, q)
-
-    # both greater → LCA must be in right subtree
-    if p.val > node.val and q.val > node.val:
-        return lca(node.right, p, q)
-
-    # p and q are on different sides (or one equals node) → this node is LCA
-    return node
-
-
-# Search in BST
-def search(node, target):
-    if not node or node.val == target:
-        return node                     # found or exhausted
+    if <node is the answer>:
+        return node
 
     if target < node.val:
-        return search(node.left, target)
-    return search(node.right, target)
+        return dfs(node.left, target)       # smaller → can only be on the left
+    return dfs(node.right, target)          # larger → can only be on the right
 ```
 
-**Example — Validate BST:**
+- **One recursive call, not two:** the property tells you which side to take.
+- **Per problem, only the base case and the "answer" check change.**
 
-```
-Tree:
-        5
-       / \
-      3   7
-     / \
-    2   4
+**Unlocks:** search, insert, LCA of a BST, delete, trim, closest value, floor/ceiling.
 
-is_valid(5, -inf, +inf):
-  is_valid(3, -inf, 5):        # left of 5, so max becomes 5
-    is_valid(2, -inf, 3): True
-    is_valid(4, 3, 5): True
-  is_valid(7, 5, +inf): True   # right of 5, so min becomes 5
-→ True ✓
-```
+**Trace (search 5):** `8 → left → 4 → right → 6 → left → 5 ✓` (4 nodes visited out of 7)
 
-**Example — LCA of 2 and 4 in same tree:**
+#### Block 2: Inorder is sorted
 
-```
-lca(5, p=2, q=4):
-  both < 5 → go left
-lca(3, p=2, q=4):
-  2 < 3 and 4 > 3 → split at 3 → LCA is 3 ✓
+Inorder (left → node → right) visits values in **sorted order**.
+
+```python
+def inorder(root):
+    stack, node = [], root
+    while stack or node:
+        while node:                 # go as far left as possible
+            stack.append(node)
+            node = node.left
+        node = stack.pop()          # smallest unvisited node
+        visit(node)                 # ← the problem's work goes here
+        node = node.right           # then its right subtree
 ```
 
-**Complexity:** O(h) time for all BST operations. O(h) space. Balanced BST → O(log n); worst case skewed → O(n).
+- **Why iterative:** you can stop after any `visit` and resume later. That is exactly BST Iterator, and it also makes "stop at the kth" cheap.
+- **Recursive version:** `inorder(left) → visit(node) → inorder(right)`.
 
----
+**Unlocks:** kth smallest, validate (must be strictly increasing), successor/predecessor, min difference, recover BST (find where the order breaks), two-sum in a BST, BST iterator.
 
-#### BST Inorder Sorted Property
+**Trace:** `2 → 4 → 5 → 6 → 8 → 12 → 14` ✓ sorted
 
-Inorder traversal of a BST always produces sorted output. This is the key property that unlocks several BST problems.
+#### Block 3: Pass a range down
 
+**Why not compare with the parent only?** The rule applies to the whole subtree. A node can look fine against its parent and still break an ancestor's rule.
+
+```python
+def dfs(node, low, high):                       # every node here must stay inside (low, high)
+    if not node:
+        return True
+    if not (low < node.val < high):
+        return False
+    return (dfs(node.left,  low, node.val) and  # going left: upper bound becomes the parent
+            dfs(node.right, node.val, high))    # going right: lower bound becomes the parent
+
+dfs(root, float('-inf'), float('inf'))
 ```
-BST:
-        4
-       / \
-      2   6
-     / \ / \
-    1  3 5  7
 
-Inorder: 1 → 2 → 3 → 4 → 5 → 6 → 7  ✓ sorted
+**Unlocks:** validate BST, construct BST from preorder (take the next value only if it fits the range), serialize/deserialize BST (the range tells you where each node belongs, so no null markers).
+
+**Trace (invalid tree: 5 → left 3 → right child 6):**
 ```
+dfs(5, -inf, inf) ✓ → dfs(3, -inf, 5) ✓ → dfs(6, 3, 5): 6 < 5? No → False ✗
+```
+6 passes the parent check (6 > 3) but breaks the ancestor's rule (must be < 5).
 
-**When to use inorder on a BST:**
-- **Kth smallest** — inorder, stop at kth node
-- **Validate BST** — inorder output must be strictly increasing
-- **Find successor/predecessor** — next/prev in inorder sequence
-
-**When to use other traversals on a BST:**
-- **Preorder** — serialize / reconstruct a BST
-- **Postorder** — delete a BST (children before parent)
+**Complexity:** Block 1: O(h). Blocks 2, 3: O(n). Balanced tree → h = log n. Skewed tree → h = n.
 
 ---
 ---
