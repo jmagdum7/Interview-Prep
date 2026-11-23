@@ -1920,185 +1920,200 @@ pop 3 → result=[1,2,3], push (6,2,1)
 # 9. Backtracking
 
 ### Mental Trigger
-> *"Do I need to explore all possible combinations or paths — and can I prune dead ends early?"*
+> *"Do I need to list every valid combination, arrangement or path?"*
 
-**Why this works:** build incrementally. At each step, make a choice, recurse, then undo (backtrack). Cut off paths the moment they can't lead to a valid answer.
+**Idea:** try a choice, go deeper, undo it, try the next. Skip a choice the moment it can't work.
 
 ---
 
-### Translation Table
+### The Template
 
-| You hear this... | Pattern | Template |
+```python
+result = []
+
+def backtrack(<state>, path):
+    if <goal reached>:                      # Q3
+        result.append(path[:])              # save a copy of the path
+        return
+
+    for choice in <choices>:                # Q1
+        if <not allowed>:                   # Q4
+            continue                        # skip this choice
+        path.append(choice)                 # choose
+        backtrack(<next state>, path)       # recurse (Q2)
+        path.pop()                          # undo
+
+backtrack(<start state>, [])
+return result
+```
+
+**Why the code looks like this**
+- **`for` loop:** tries each choice, one at a time.
+- **choose → recurse → undo:** add a choice, go deeper, then remove it so the next choice starts clean.
+- **`path[:]`:** `path` keeps changing as we go, so we store a copy of it.
+
+---
+
+### The 4 Questions
+
+| # | Question | Fills |
 |---|---|---|
-| "all subsets", "power set" | Include/exclude each element | 1 |
-| "all permutations" | Try each unused element at each position | 2 |
-| "all combinations that sum to target" | Running sum with pruning | 3 |
-| "word search", "path in grid", "fill board" | Grid backtracking | 4 |
-| "solve puzzle", "fill grid" | Try, recurse, undo on contradiction | 3 variant |
+| Q1 | What can I choose at each step? | `<choices>` |
+| Q2 | What do I need to remember after choosing? | `<state>` |
+| Q3 | When is the path complete? | `<goal reached>` |
+| Q4 | When should I skip a choice? | `<not allowed>` |
+
+**Helping with Q1: does the order of picks matter?**
+
+Would picking 2 then 3 give the same answer as picking 3 then 2?
+- **Same answer** (e.g. combinations that sum to 7: `[2,3,2]` is the same as `[2,2,3]`): only look **forward** from your last pick. Otherwise you'd build the same answer again in a different order. Remember a `start` index.
+- **Different answers** (e.g. permutations: `[1,2]` and `[2,1]` are different): look at **all** items every time. Remember which ones are already used.
 
 ---
 
-### Questions to Ask Before Coding
+### Example 1: Combination Sum
 
-**Q1 — Does order matter in the output?**
-- No (subsets) → iterate forward from `start`, never revisit → Template 1
-- Yes (permutations) → try all unused elements at each position → Template 2
+**Problem:** Pick numbers from `[2,3,6,7]`, reusing allowed, that add up to 7. Return all combinations.
 
-**Q2 — Can elements be reused?**
-- No → pass `i + 1` as next start → Template 1
-- Yes → pass `i` as next start (same element allowed again) → Template 3
-
-**Q3 — Am I searching through a 2D grid?**
-- Yes → grid backtracking → Template 4
-
-**Q4 — What is the pruning condition?**
-- This goes in your early `return` before the loop
-- Sum exceeds target → `if remaining < 0: return`
-- Out of bounds or visited → `if not valid: return`
-- Invalid board state → `if not valid(board): return`
-
----
-
-### Template 1 — Subsets (No reuse, order doesn't matter)
+| Question | Answer | Goes into the code |
+|---|---|---|
+| Q1: Choices | Numbers from `start` onward (order doesn't matter, reuse is fine) | `for i in range(start, len(candidates))` |
+| Q2: Remember | `start` and how much is `remaining` | `backtrack(i, path, remaining - candidates[i])` |
+| Q3: Goal | Nothing remaining | `remaining == 0` |
+| Q4: Skip | A number bigger than what's remaining | `candidates[i] > remaining` |
 
 ```python
-def backtrack(start, current):
-    result.append(current[:])       # every state is valid — add it
+def combinationSum(candidates, target):
+    result = []
+    candidates.sort()
 
-    for i in range(start, len(nums)):
-        current.append(nums[i])     # choose
-        backtrack(i + 1, current)   # recurse — i+1 means no reuse
-        current.pop()               # undo
+    def backtrack(start, path, remaining):
+        if remaining == 0:                          # Q3: goal
+            result.append(path[:])                  # save a copy of the path
+            return
 
-result = []
-backtrack(0, [])
-return result
+        for i in range(start, len(candidates)):     # Q1: numbers from start onward
+            if candidates[i] > remaining:           # Q4: too big → stop (sorted, so later ones are bigger too)
+                break
+            path.append(candidates[i])              # choose
+            backtrack(i, path, remaining - candidates[i])   # recurse: i (not i+1) lets us reuse a number
+            path.pop()                              # undo
+
+    backtrack(0, [], target)
+    return result
 ```
 
-**Example — all subsets of `[1,2,3]`:**
 ```
-Q1: order doesn't matter → Template 1
-Q2: no reuse → i+1
-Q3: no pruning needed
+Trace (bt = backtrack):
+bt(0, [], 7)
+  choose 2 → bt(0, [2], 5)
+    choose 2 → bt(0, [2,2], 3)
+      choose 2 → bt(0, [2,2,2], 1)
+        2 > 1 → skip (dead end)
+      undo 2
+      choose 3 → bt(1, [2,2,3], 0)
+        remaining = 0 → record [2,2,3] ✓
+      undo 3
+      6 > 3 → skip
+    undo 2
+    choose 3 → bt(1, [2,3], 2)
+      3 > 2 → skip (dead end)
+    undo 3
+    6 > 5 → skip
+  undo 2
+  choose 3 → bt(1, [3], 4)
+    choose 3 → bt(1, [3,3], 1)
+      3 > 1 → skip (dead end)
+    undo 3
+    6 > 4 → skip
+  undo 3
+  choose 6 → bt(2, [6], 1)
+    6 > 1 → skip (dead end)
+  undo 6
+  choose 7 → bt(3, [7], 0)
+    remaining = 0 → record [7] ✓
+  undo 7
 
-[] → add []
-include 1 → [1] → add [1]
-  include 2 → [1,2] → add [1,2]
-    include 3 → [1,2,3] → add [1,2,3]
-  undo 2, include 3 → [1,3] → add [1,3]
-undo 1, include 2 → [2] → ...
+result = [[2,2,3],[7]] ✓
 ```
-**Complexity:** O(2^n) time. O(n) space.
+
+**Complexity:** O(n^(target ÷ smallest candidate)) time, as an upper bound. O(target ÷ smallest candidate) space for the recursion depth.
 
 ---
 
-### Template 2 — Permutations (Order matters)
+### Example 2: Word Search
+
+**Problem:** Is `"CAT"` in the grid, moving up/down/left/right, never reusing a cell?
+
+```
+Grid:
+  C A T
+  A B T
+```
+
+| Question | Answer | Goes into the code |
+|---|---|---|
+| Q1: Choices | The 4 neighbor cells | `for dr, dc in ((1,0), (-1,0), (0,1), (0,-1))` |
+| Q2: Remember | Position `(r, c)` and how many letters matched (`k`) | `backtrack(r + dr, c + dc, k + 1)` |
+| Q3: Goal | All letters matched | `k == len(word)` |
+| Q4: Skip | Off the grid, wrong letter, or already used | the `if` at the top |
+
+Two differences from the template:
+- There is no `path` list. Marking cells on the grid is the path, so **choose = mark the cell** and **undo = restore it**.
+- The question is yes/no ("is it there?"), so it returns `True`/`False` instead of a list. The skip check also sits at the top of the call instead of inside the loop. It's the same idea.
 
 ```python
-def backtrack(current):
-    if len(current) == len(nums):
-        result.append(current[:])   # complete permutation
-        return
+def exist(board, word):
+    rows, cols = len(board), len(board[0])
 
-    for num in nums:
-        if num in current:          # skip already used
-            continue
-        current.append(num)
-        backtrack(current)
-        current.pop()
-
-result = []
-backtrack([])
-return result
-```
-
-**Example — all permutations of `[1,2,3]`:**
-```
-Q1: order matters → Template 2
-Q2: no reuse — skip if already in current
-
-[1,2,3], [1,3,2], [2,1,3], [2,3,1], [3,1,2], [3,2,1] ✓
-```
-**Complexity:** O(n!) time. O(n) space.
-
----
-
-### Template 3 — Combination Sum (Reuse allowed, pruning)
-
-```python
-def backtrack(start, current, remaining):
-    if remaining == 0:
-        result.append(current[:])   # valid combination found
-        return
-    if remaining < 0:
-        return                      # pruned — exceeded target
-
-    for i in range(start, len(candidates)):
-        current.append(candidates[i])
-        backtrack(i, current, remaining - candidates[i])  # i not i+1 — allows reuse
-        current.pop()
-
-result = []
-backtrack(0, [], target)
-return result
-```
-
-**Example — combinations summing to 7 from `[2,3,6,7]`:**
-```
-Q1: order doesn't matter → forward iteration
-Q2: reuse allowed → pass i not i+1
-Q4: prune when remaining < 0
-
-try 2 → rem=5 → try 2 → rem=3 → try 3 → rem=0 → add [2,2,3]
-try 7 → rem=0 → add [7]
-result: [[2,2,3],[7]] ✓
-```
-**Complexity:** O(2^n) worst case, pruning reduces in practice.
-
----
-
-### Template 4 — Grid Backtracking (Word Search)
-
-```python
-def backtrack(r, c, index):
-    if index == len(word):
-        return True                 # found entire word
-
-    if r < 0 or r >= rows or c < 0 or c >= cols:
-        return False                # out of bounds
-    if grid[r][c] != word[index]:
-        return False                # wrong character
-    if (r, c) in visited:
-        return False                # already used this cell
-
-    visited.add((r, c))            # mark as used
-
-    found = (backtrack(r+1, c, index+1) or   # explore all 4 directions
-             backtrack(r-1, c, index+1) or
-             backtrack(r, c+1, index+1) or
-             backtrack(r, c-1, index+1))
-
-    visited.remove((r, c))         # undo — unmark for other paths
-    return found
-
-visited = set()
-for r in range(rows):
-    for c in range(cols):
-        if backtrack(r, c, 0):
+    def backtrack(r, c, k):
+        if k == len(word):                          # Q3: goal
             return True
-return False
+        if r < 0 or r >= rows or c < 0 or c >= cols or board[r][c] != word[k]:
+            return False                            # Q4: off grid, wrong letter, or used
+
+        saved = board[r][c]
+        board[r][c] = '#'                           # choose: mark the cell as used
+        found = any(backtrack(r + dr, c + dc, k + 1)            # recurse
+                    for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)))   # Q1: 4 neighbors
+        board[r][c] = saved                         # undo: put the letter back
+        return found
+
+    for r in range(rows):
+        for c in range(cols):
+            if backtrack(r, c, 0):                  # try every cell as the start
+                return True
+    return False
 ```
 
-**Example — find "ABC" in grid `[["A","B","C"],["D","E","F"]]`:**
 ```
-Q3: searching 2D grid → Template 4
-Q4: prune if out of bounds, wrong char, or already visited
+Trace (neighbor order: down, up, right, left):
+bt(0,0,0): 'C' = word[0] ✓ → mark
+  down  (1,0)='A' = word[1] ✓ → bt(1,0,1): mark
+    down  off grid → skip
+    up    (0,0) is '#' → skip
+    right (1,1)='B' ≠ 'T' → skip
+    left  off grid → skip
+    all four failed → dead end → restore 'A' at (1,0)
+  up    off grid → skip
+  right (0,1)='A' = word[1] ✓ → bt(0,1,1): mark
+    down  (1,1)='B' ≠ 'T' → skip
+    up    off grid → skip
+    right (0,2)='T' = word[2] ✓ → bt(0,2,2): mark
+      neighbor call has k = 3 = len(word) → True ✓
+found → True passes up, restoring cells on the way
 
-start at (0,0)='A' → match index=0
-  move right (0,1)='B' → match index=1
-    move right (0,2)='C' → match index=2 → found ✓
+result = True ✓
 ```
-**Complexity:** O(rows * cols * 4^len(word)) time. O(len(word)) space.
+
+**Complexity:** O(rows·cols·3^L) time, where L = word length (3, not 4, because you never step back to the cell you came from). O(L) space.
+
+---
+
+### Two Variations
+
+- **Duplicates in the input?** Sort first, then skip a number equal to the previous one at the same step: `if i > start and candidates[i] == candidates[i-1]: continue`.
+- **Yes/no question ("does one exist?")?** Return `True` at the goal, and stop as soon as a call returns `True` (Word Search above).
 
 ---
 ---
