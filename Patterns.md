@@ -1954,6 +1954,64 @@ return result
 
 ---
 
+### Filling the Loop: 3 Slots
+
+Every backtracking loop has the same skeleton. Three slots change from problem to problem:
+
+```python
+for i in ___A___:                  # how far can I look?
+    if ___B___:                    # which choices do I skip?
+        continue
+    path.append(nums[i])
+    backtrack(___C___)             # what do I pass on?
+    path.pop()
+```
+
+Fill them in with 2 steps. **Do Step 1 first. Step 2 depends on its answer.**
+
+---
+
+#### Step 1: Does order matter? (Is `[1,2]` different from `[2,1]`?)
+
+| Answer | Slot A | Slot B | Slot C |
+|---|---|---|---|
+| **No** (subsets, combinations) | `range(start, len(nums))` | nothing yet | `i + 1` |
+| **Yes** (permutations) | `range(len(nums))` | `used[i]` | no `start` |
+
+- **No:** look only **forward**, so each group is built in one order only.
+- **Yes:** look at **everything**, and use `used` so a position isn't picked twice.
+- **Can a number be reused?** Pass `i` instead of `i + 1` (Combination Sum).
+
+---
+
+#### Step 2: Does the input have duplicate values? (like `[1,2,1]`)
+
+- **No:** you're done, nothing to add.
+- **Yes:** **sort first**, then add one more skip line to Slot B. Which line depends on your Step 1 answer:
+
+| Step 1 answer | Add to Slot B |
+|---|---|
+| **Order doesn't matter** | `if i > start and nums[i] == nums[i-1]: continue` |
+| **Order matters** | `if i > 0 and nums[i] == nums[i-1] and not used[i-1]: continue` |
+
+**In plain words:**
+- **Order doesn't matter:** "If I'm not the first pick in this loop and I equal the number before me, skip me."
+- **Order matters:** "If I equal the number before me, and that one isn't in the path right now, skip me."
+
+---
+
+#### Quick map
+
+| Problem | Order matters? | Duplicates in input? | Extra Slot B line |
+|---|---|---|---|
+| Subsets | No | No | none |
+| Subsets II | No | Yes | `i > start` version |
+| Combination Sum II | No | Yes | `i > start` version |
+| Permutations | Yes | No | none (just `used[i]`) |
+| Permutations II | Yes | Yes | `i > 0 … not used[i-1]` version |
+
+---
+
 ### The 4 Questions
 
 | # | Question | Fills |
@@ -1962,12 +2020,6 @@ return result
 | Q2 | What do I need to remember after choosing? | `<state>` |
 | Q3 | When is the path complete? | `<goal reached>` |
 | Q4 | When should I skip a choice? | `<not allowed>` |
-
-**Helping with Q1: does the order of picks matter?**
-
-Would picking 2 then 3 give the same answer as picking 3 then 2?
-- **Same answer** (e.g. combinations that sum to 7: `[2,3,2]` is the same as `[2,2,3]`): only look **forward** from your last pick. Otherwise you'd build the same answer again in a different order. Remember a `start` index.
-- **Different answers** (e.g. permutations: `[1,2]` and `[2,1]` are different): look at **all** items every time. Remember which ones are already used.
 
 ---
 
@@ -2001,40 +2053,6 @@ def combinationSum(candidates, target):
 
     backtrack(0, [], target)
     return result
-```
-
-```
-Trace (bt = backtrack):
-bt(0, [], 7)
-  choose 2 → bt(0, [2], 5)
-    choose 2 → bt(0, [2,2], 3)
-      choose 2 → bt(0, [2,2,2], 1)
-        2 > 1 → skip (dead end)
-      undo 2
-      choose 3 → bt(1, [2,2,3], 0)
-        remaining = 0 → record [2,2,3] ✓
-      undo 3
-      6 > 3 → skip
-    undo 2
-    choose 3 → bt(1, [2,3], 2)
-      3 > 2 → skip (dead end)
-    undo 3
-    6 > 5 → skip
-  undo 2
-  choose 3 → bt(1, [3], 4)
-    choose 3 → bt(1, [3,3], 1)
-      3 > 1 → skip (dead end)
-    undo 3
-    6 > 4 → skip
-  undo 3
-  choose 6 → bt(2, [6], 1)
-    6 > 1 → skip (dead end)
-  undo 6
-  choose 7 → bt(3, [7], 0)
-    remaining = 0 → record [7] ✓
-  undo 7
-
-result = [[2,2,3],[7]] ✓
 ```
 
 **Complexity:** O(n^(target ÷ smallest candidate)) time, as an upper bound. O(target ÷ smallest candidate) space for the recursion depth.
@@ -2110,9 +2128,8 @@ result = True ✓
 
 ---
 
-### Two Variations
+### Variation
 
-- **Duplicates in the input?** Sort first, then skip a number equal to the previous one at the same step: `if i > start and candidates[i] == candidates[i-1]: continue`.
 - **Yes/no question ("does one exist?")?** Return `True` at the goal, and stop as soon as a call returns `True` (Word Search above).
 
 ---
