@@ -1785,134 +1785,240 @@ dfs(5, -inf, inf) ✓ → dfs(3, -inf, 5) ✓ → dfs(6, 3, 5): 6 < 5? No → Fa
 # 8. Heap / Priority Queue
 
 ### Mental Trigger
-> *"Do I need to repeatedly find the smallest or largest element from a changing collection?"*
+> *"Do I need the smallest or largest item again and again, while new items keep arriving?"*
 
-**Why this works:** a heap gives O(1) access to min or max, and O(log n) insert. Better than sorting when you only need the top K or a running extreme.
+---
+
+### What is a heap?
+
+Think of an **ER waiting room**. Patients aren't seen in arrival order. The most urgent goes next, and new patients keep arriving. A heap works the same way: you can add items any time, and it always hands you the **smallest** one first. (A *priority queue* is the same idea.)
+
+| Operation | What it does | Cost |
+|---|---|---|
+| push(x) | add x | O(log n) |
+| pop() | remove and return the smallest | O(log n) |
+| heap[0] | look at the smallest, don't remove it | O(1) |
+
+**Why not just sort?** Sorting works for a fixed list. If items keep arriving, re-sorting every time costs O(n log n). A heap costs O(log n) per item.
+
+**In Python**
+
+```python
+import heapq
+
+heap = []                         # a heap is just a normal list
+heapq.heappush(heap, 5)           # add 5
+heapq.heappush(heap, 2)           # add 2
+heapq.heappush(heap, 8)           # add 8
+
+heap[0]                           # 2 → peek at the smallest
+heapq.heappop(heap)               # 2 → remove and return the smallest
+```
+
+- **Smallest-first only.** Want the largest first? Store negatives: push `-5`, `-2`, `-8` and the front is `-8`, which is the original 8. Negate what you pop to get the original back.
+- **Pairs (tuples).** To order items by a score, push a pair like `(3, "apple")`. The heap orders by the first part, the score. If two scores tie, it compares the second part.
+- **Tie-breaker.** If the second part can't be compared (like linked-list nodes), a tie crashes Python. Put a unique number in the middle: `(score, i, item)`.
 
 ---
 
 ### Translation Table
 
-| You hear this... | Pattern | Template |
-|---|---|---|
-| "top K", "K largest", "K most frequent" | Min heap size K | 1 |
-| "K smallest" | Max heap size K | 1 variant |
-| "running median" | Two heaps (max + min) | 2 |
-| "merge K sorted lists" | Min heap with K elements | 3 |
-| "next task by priority" | Min/max heap | 1 |
+| You hear this... | Template |
+|---|---|
+| "top K", "Kth largest/smallest", "K closest", "K most frequent" | 1 |
+| "median", "data stream" | 2 |
+| "merge K sorted", "Kth smallest in a sorted matrix" | 3 |
+
+### The 3 Questions
+
+1. **What does the heap hold?**
+   - The K best items so far → Template 1
+   - The lower half and upper half of the numbers → Template 2
+   - The next waiting item from each sorted list → Template 3
+2. **Do I want the largest or the smallest?** (Template 1) K largest → store as is. K smallest → store negatives.
+3. **What decides who comes out first?** That is the score you push as the first part of the pair `(score, item)`. For example: distance for "closest", count for "most frequent".
 
 ---
 
-### Questions to Ask Before Coding
+### Template 1: Keep the K best
 
-**Q1 — Do I need top K largest, or top K smallest?**
-- Top K largest → min heap of size K (eject smallest) → Template 1
-- Top K smallest → max heap of size K (eject largest, negate values) → Template 1 variant
-
-**Q2 — Is the collection static (given upfront) or dynamic (streaming)?**
-- Static → heapify once, pop K times
-- Dynamic/streaming → maintain heap as elements arrive → Template 1
-
-**Q3 — Do I need a running median, or merge multiple sorted sources?**
-- Running median → two heaps → Template 2
-- Merge K sorted lists → min heap with one element per list → Template 3
-
----
-
-### Template 1 — Top K Largest (Min Heap)
+Like a top-3 leaderboard: keep 3 names. When a new score arrives, the lowest of the 4 gets knocked off.
 
 ```python
 import heapq
 
 heap = []
-for num in nums:
-    heapq.heappush(heap, num)       # push element
+for item in <items>:
+    heapq.heappush(heap, <score>)       # Q3: what decides who comes out first
     if len(heap) > k:
-        heapq.heappop(heap)         # eject smallest — keep only top K
+        heapq.heappop(heap)             # too many → knock off the weakest
 
-return heap                         # K largest elements remain
+return heap                             # the K best
 ```
 
-**Example — top 3 largest from `[3,1,4,1,5,9,2,6]`:**
-```
-Q1: top K largest → min heap → Template 1
-Q2: static input
+**Why the code looks like this**
+- **Min-heap for the K largest:** the front is the smallest of the K you kept, which is the weakest. Popping removes exactly the one to knock off.
+- **Size K:** the heap never holds more than K+1 items, so it stays fast.
+- **The score:** make the *worst* item the smallest, because pop removes the smallest.
 
-push 3→[3], push 1→[1,3], push 4→[1,3,4]
-push 1→pop 1→[1,3,4], push 5→pop 1→[3,4,5]
-push 9→pop 3→[4,5,9], push 2→pop 2→[4,5,9]
-push 6→pop 4→[5,6,9] ✓
+| Problem | Push |
+|---|---|
+| K largest numbers | `num` |
+| K smallest numbers | `-num` |
+| K most frequent | `(count, item)` |
+| K closest points | `(-distance, point)` |
+
+- **Kth largest:** it's `heap[0]` after the loop.
+
+**Example:** find the 3 largest numbers in `[3,1,4,1,5,9,2,6]`.
+
+```python
+def top_k_largest(nums, k):
+    heap = []
+    for num in nums:
+        heapq.heappush(heap, num)       # Q3: the score is the number itself
+        if len(heap) > k:
+            heapq.heappop(heap)         # knock off the smallest
+    return heap
 ```
+
+```
+Trace (k = 3, heap shown smallest-first):
+num=3 → push → [3]
+num=1 → push → [1,3]
+num=4 → push → [1,3,4]
+num=1 → push → [1,1,3,4] → size 4 > 3 → pop 1 → [1,3,4]
+num=5 → push → [1,3,4,5] → pop 1 → [3,4,5]
+num=9 → push → [3,4,5,9] → pop 3 → [4,5,9]
+num=2 → push → [2,4,5,9] → pop 2 → [4,5,9]
+num=6 → push → [4,5,6,9] → pop 4 → [5,6,9]
+
+result = [5,6,9] ✓
+```
+
 **Complexity:** O(n log k) time. O(k) space.
 
 ---
 
-### Template 2 — Running Median (Two Heaps)
+### Template 2: Two halves (running median)
+
+**What is a median?** The middle number once sorted. `[2,5,8]` → **5**. With an even count, average the two middle numbers: `[1,2,5,8]` → (2+5)/2 = **3.5**.
+
+**Running median:** numbers arrive one at a time. After each one, report the median so far. Re-sorting every time is slow.
+
+**The trick:** split the sorted numbers into a lower half and an upper half. The median sits at the boundary.
+
+```
+sorted:   1  2  |  5  8
+          lower    upper
+median = (2 + 5) / 2    ← the two numbers touching the boundary
+```
+
+- The **largest of the lower half** → a max-heap (`small`) gives it instantly.
+- The **smallest of the upper half** → a min-heap (`large`) gives it instantly.
 
 ```python
-import heapq
+small = []      # lower half, stored negated (max-heap). Front = largest of the lower half
+large = []      # upper half (min-heap).                 Front = smallest of the upper half
 
-small = []      # max heap (negate) — lower half
-large = []      # min heap — upper half
-
-def add_num(num):
-    heapq.heappush(small, -num)
-
-    if small and large and (-small[0] > large[0]):
-        heapq.heappush(large, -heapq.heappop(small))
-
-    if len(small) > len(large) + 1:
-        heapq.heappush(large, -heapq.heappop(small))
-    if len(large) > len(small):
+def add(num):
+    heapq.heappush(small, -num)                         # 1. put it in the lower half
+    heapq.heappush(large, -heapq.heappop(small))        # 2. move the lower half's largest up
+    if len(large) > len(small):                         # 3. keep small equal or one bigger
         heapq.heappush(small, -heapq.heappop(large))
 
-def find_median():
+def median():
     if len(small) > len(large):
-        return -small[0]
-    return (-small[0] + large[0]) / 2
+        return -small[0]                                # odd count: the middle is small's front
+    return (-small[0] + large[0]) / 2                   # even count: average the two middles
 ```
 
-**Example — median after each number arrives:**
+**Why the code looks like this**
+- **Steps 1–2:** every new number passes through the lower half, then its largest moves up. This guarantees everything in `small` ≤ everything in `large`.
+- **Step 3:** keeps the halves balanced. `small` may have one extra number, which is the middle when the count is odd.
+
+**Example:** numbers arrive as 5, 2, 8, 1. Report the median after each.
+
 ```
-Q3: running median → two heaps → Template 2
-Lower half in max heap, upper half in min heap
-Median is at the boundary between them
+Trace:
+add 5 → small=[5],   large=[]      → median 5
+add 2 → small=[2],   large=[5]     → median (2+5)/2 = 3.5
+add 8 → small=[2,5], large=[8]     → median 5
+add 1 → small=[1,2], large=[5,8]   → median (2+5)/2 = 3.5 ✓
 ```
-**Complexity:** O(log n) per insert. O(1) per median query.
+
+**Complexity:** O(log n) per add. O(1) per median. O(n) space.
 
 ---
 
-### Template 3 — Merge K Sorted Lists
+### Template 3: Merge sorted lists
+
+**The problem:** you have K lists, each already sorted. Merge them into one sorted list.
+
+```
+List A: 1 → 4
+List B: 2 → 5
+List C: 3
+```
+
+The overall smallest number must be the **front** of one of the lists: 1, 2 or 3. We call these fronts the **candidates**. Take the smallest candidate (1), then bring in the next item from the same list (4) as a new candidate. Repeat. The heap holds only the candidates, so it stays tiny.
 
 ```python
-import heapq
-
 heap = []
-for i, lst in enumerate(lists):
-    if lst:
-        heapq.heappush(heap, (lst[0], i, 0))   # (value, list_idx, elem_idx)
+for <each list>:
+    heapq.heappush(heap, <its first item>)      # the candidates
 
-result = []
 while heap:
-    val, i, j = heapq.heappop(heap)            # global minimum
-    result.append(val)
-    if j + 1 < len(lists[i]):
-        heapq.heappush(heap, (lists[i][j+1], i, j+1))
-
-return result
+    best = heapq.heappop(heap)                  # smallest candidate
+    <add best to the result>
+    if <best's list has a next item>:
+        heapq.heappush(heap, <that next item>)  # it becomes the new candidate
 ```
 
-**Example — merge `[[1,4,7],[2,5,8],[3,6,9]]`:**
-```
-Q3: merge K sorted → Template 3
+**Why the code looks like this**
+- **One candidate per list:** pop the smallest, then push its replacement from the same list. The heap never grows past K items.
+- **The `i` in `(node.val, i, node)`:** a tie-breaker. If two values are equal, Python compares `i` next, so it never compares two nodes (which would crash).
 
-initial heap=[(1,0,0),(2,1,0),(3,2,0)]
-pop 1 → result=[1], push (4,0,1)
-pop 2 → result=[1,2], push (5,1,1)
-pop 3 → result=[1,2,3], push (6,2,1)
-...continues → [1,2,3,4,5,6,7,8,9] ✓
+**Example:** merge sorted linked lists `[1→4]`, `[2→5]`, `[3]`.
+
+```python
+def mergeKLists(lists):
+    heap = []
+    for i, node in enumerate(lists):            # i = which list it came from
+        if node:
+            heapq.heappush(heap, (node.val, i, node))   # (score, tie-breaker, item)
+
+    dummy = tail = ListNode(0)
+    while heap:
+        val, i, node = heapq.heappop(heap)      # smallest candidate
+        tail.next = node                        # add it to the result
+        tail = tail.next
+        if node.next:
+            heapq.heappush(heap, (node.next.val, i, node.next))   # next from the same list
+    return dummy.next
 ```
-**Complexity:** O(n log k) time where k=number of lists.
+
+```
+Trace (entries are (value, list i); lists are numbered 0, 1, 2):
+seed → heap = (1,0) (2,1) (3,2)
+pop (1,0) → output 1 → push (4,0)   → heap = (2,1) (3,2) (4,0)
+pop (2,1) → output 2 → push (5,1)   → heap = (3,2) (4,0) (5,1)
+pop (3,2) → output 3 → list 2 is done → heap = (4,0) (5,1)
+pop (4,0) → output 4 → list 0 is done → heap = (5,1)
+pop (5,1) → output 5 → list 1 is done → heap = empty
+
+result = 1 → 2 → 3 → 4 → 5 ✓
+```
+
+**Complexity:** O(n log k) time (n = total items, k = number of lists). O(k) space.
+
+---
+
+### Related
+
+**Dijkstra's algorithm** (said "DYKE-struh"): the algorithm behind "fastest route" in a map app. Roads have different travel times, and you always explore the *closest unexplored place next*. "Give me the closest one" is exactly what a heap does, so Dijkstra is a heap problem that lives in Graphs. It has the same shape as Template 3: pop the best candidate, push the places it unlocks. BFS shortest path (Graphs, Template 2) only works when every road is the same length. Dijkstra handles different lengths. *Not yet in the Graphs section.*
+
+**Meeting Rooms II** also uses a heap, one that tracks when each room frees up (Intervals, Template 2).
 
 ---
 ---
